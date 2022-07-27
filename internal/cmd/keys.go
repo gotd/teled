@@ -42,7 +42,7 @@ func formatPemAsConstChar(data []byte) string {
 	return b.String()
 }
 
-func newKeys(a *application) *cobra.Command {
+func newKeys(_ *application) *cobra.Command {
 	var keysCmd = &cobra.Command{
 		Use:   "keys",
 		Short: "Keys management",
