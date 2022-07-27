@@ -51,7 +51,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.Int("dc", opt.DC),
 			)
 			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), tgtest.UnpackInvoke(a), opt)
-			return srv.Serve(ctx, transport.Listen(ln))
+			return srv.Serve(ctx, transport.ListenCodec(transport.Abridged.CodecNoHeader, ln))
 		},
 	}
 
