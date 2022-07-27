@@ -6,9 +6,41 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+func formatPemAsConstChar(data []byte) string {
+	var b strings.Builder
+
+	b.WriteString(`const char *kPublicRSAKeys[] = { "\`)
+	b.WriteRune('\n')
+
+	lines := strings.Split(string(data), "\n")
+	var nonBlankLines []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		nonBlankLines = append(nonBlankLines, line)
+	}
+
+	lastLineIndex := len(nonBlankLines) - 1
+	for i, line := range nonBlankLines {
+		b.WriteString(strings.TrimSpace(line))
+		switch i {
+		case lastLineIndex:
+			b.WriteString(`" };`)
+		default:
+			b.WriteString(`\n\`)
+			b.WriteRune('\n')
+		}
+	}
+
+	return b.String()
+}
 
 func newKeys(a *application) *cobra.Command {
 	var keysCmd = &cobra.Command{
@@ -46,7 +78,8 @@ func newKeys(a *application) *cobra.Command {
 				},
 			)
 
-			fmt.Println(string(keyPEM), string(pubPEM))
+			fmt.Println(string(keyPEM))
+			fmt.Println(formatPemAsConstChar(pubPEM))
 
 			return nil
 		},
