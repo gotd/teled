@@ -57,6 +57,11 @@ eQnhbTFuwG958vSX1zJOqkDkXlue/1XeMQIDAQAB\n\
 -----END RSA PUBLIC KEY-----" };
 ```
 
+```console
+go install ./cmd/teled
+teled --key _testdata/test.key.pem
+```
+
 ### tdesktop
 
 Update following files:
@@ -64,3 +69,29 @@ Update following files:
 * Telegram/SourceFiles/mtproto/mtp_instance.cpp
 * Telegram/SourceFiles/mtproto/mtp_instance.h
 * Telegram/SourceFiles/mtproto/mtproto_dc_options.cpp
+
+Instead, you can use [gotd/tdesktop](https://github.com/gotd/tdesktop) fork.
+
+#### Building docker image for fork
+```console
+pip install poetry
+
+git clone --recursive https://github.com/gotd/tdesktop.git
+cd tdesktop/Telegram/build/docker/centos_env
+poetry install
+poetry run gen_dockerfile | docker build -t tdesktop:centos_env -
+```
+
+#### Building fork
+From tdesktop root directory:
+```bash
+docker run --rm -it \
+    -v $PWD:/usr/src/tdesktop \
+    -e DEBUG=1 \
+    tdesktop:centos_env \
+    /usr/src/tdesktop/Telegram/build/docker/centos_env/build.sh \
+    -D TDESKTOP_API_ID=17349 \
+    -D TDESKTOP_API_HASH=344583e45741c457fe1862106095a5eb \
+    -D DESKTOP_APP_USE_PACKAGED=OFF \
+```
+
