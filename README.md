@@ -2,6 +2,8 @@
 
 WIP Telegram Server in Go.
 
+Not yet working, see [td#829](https://github.com/gotd/td/issues/829).
+
 ## Using
 
 Documentation is in progress.
