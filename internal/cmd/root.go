@@ -11,6 +11,7 @@ import (
 
 	"github.com/gotd/td/tgtest"
 	"github.com/gotd/td/transport"
+
 	"github.com/gotd/teled/internal/key"
 )
 
@@ -51,14 +52,14 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.Int("dc", opt.DC),
 			)
 			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), tgtest.UnpackInvoke(a), opt)
-			return srv.Serve(ctx, transport.ListenCodec(transport.Abridged.CodecNoHeader, ln))
+			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
 	}
 
 	{
 		f := rootCmd.Flags()
 		f.StringVar(&a.Host, "host", "localhost", "Hostname of the server")
-		f.IntVar(&a.Port, "port", 9443, "Port of the server")
+		f.IntVar(&a.Port, "port", 10443, "Port of the server")
 		f.StringVar(&a.PrivateKeyPath, "key", "", "Path to PEM-encoded private key")
 
 		markFlagsRequired(f, "key")
