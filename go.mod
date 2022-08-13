@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/go-faster/errors v0.6.1
-	github.com/gotd/td v0.66.1-0.20220813012834-c25efc4850b8
+	github.com/gotd/td v0.67.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.21
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
@@ -28,7 +28,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
