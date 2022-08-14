@@ -1,0 +1,49 @@
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v3.2.1
+        with:
+          go-version: 1.19
+
+      - name: Get Go environment
+        id: go-env
+        run: |
+          echo "::set-output name=cache::$(go env GOCACHE)"
+          echo "::set-output name=modcache::$(go env GOMODCACHE)"
+
+      - name: Set up cache
+        uses: actions/cache@v3.0.6
+        with:
+          path: |
+            ${{ steps.go-env.outputs.cache }}
+            ${{ steps.go-env.outputs.modcache }}
+          key: release-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            release-go-
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: teled
+          path: dist/*

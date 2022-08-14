@@ -3,3 +3,4 @@ _bin/*
 
 *-fuzz.zip
 *.out
+dist/

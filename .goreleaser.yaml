@@ -1,0 +1,41 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: tg
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    - go generate ./...
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - riscv64
+    main: ./cmd/teled
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^chore(dep):'
+      - '^test:'
+nfpms:
+  - package_name: teled
+    homepage: https://github.com/gotd/teled
+    maintainer: The GoTD Authors
+    description: Testing Telegram Server in Go
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
