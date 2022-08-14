@@ -2,16 +2,8 @@
 
 WIP Telegram Server in Go.
 
-Able to handle key exchange, establish connections, recieve requests.
-
-Not able to handle temp keys:
-```
-[22:33:24.344 01-0003566] Connection 193(dc:1,127.0.0.1:10443) Error: Error packet received, code = -404 (connection_abstract.cpp : 25)
-[22:33:24.344 01-0003567] MTP Info: -404 error received in 1 with temporary key, assuming it was destroyed.
-[22:33:24.344 01-0003568] MTP Info: auth key id set to id 0 (session_private.cpp : 25)
-```
-
-## Using
+Able to log in, starting sequence is completed until `contacts.resolveUsername#f93ccba3`
+for user `tdhbcfiles`, which should be "Favorites", then client coredumps.
 
 Documentation is in progress.
 Later the automated patch utility will be provided.
