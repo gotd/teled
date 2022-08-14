@@ -4,8 +4,11 @@ package cmd
 import (
 	"net"
 	"os"
+	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/gotd/td/tg"
+	"github.com/gotd/td/tgtest/services/config"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/gotd/td/transport"
 
 	"github.com/gotd/teled/internal/key"
+	"github.com/gotd/teled/internal/slowa"
 )
 
 func newRoot(a *application) *cobra.Command {
@@ -43,6 +47,33 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				return errors.Wrap(err, "failed to listen")
 			}
 
+			d := tgtest.NewDispatcher()
+			d.HandleFunc(tg.AuthBindTempAuthKeyRequestTypeID, a.OnAuthBindTempAuthKey)
+			d.HandleFunc(tg.HelpGetNearestDCRequestTypeID, a.OnNearestDC)
+			d.HandleFunc(tg.HelpGetAppConfigRequestTypeID, a.OnApplicationConfig)
+			d.HandleFunc(tg.HelpGetCountriesListRequestTypeID, a.OnCountriesList)
+			d.HandleFunc(tg.AuthExportLoginTokenRequestTypeID, a.OnExportLoginToken)
+			d.HandleFunc(tg.AuthSendCodeRequestTypeID, a.OnSendCode)
+
+			clusterConfig := tg.Config{
+				PhonecallsEnabled: true,
+
+				Date:    int(time.Now().Unix()),
+				Expires: int(time.Now().AddDate(0, 0, 1).Unix()),
+
+				DCOptions: []tg.DCOption{
+					{
+						ID:           1,
+						Port:         a.Port,
+						IPAddress:    "127.0.0.1",
+						ThisPortOnly: true,
+					},
+				},
+			}
+			var cdnConfig tg.CDNConfig
+			config.NewService(&clusterConfig, &cdnConfig).Register(d)
+			d.Fallback(a)
+
 			opt := tgtest.ServerOptions{
 				DC:     1,
 				Logger: a.lg,
@@ -51,7 +82,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.String("addr", a.Addr()),
 				zap.Int("dc", opt.DC),
 			)
-			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), tgtest.UnpackInvoke(a), opt)
+			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), slowa.Handler(2, tgtest.UnpackInvoke(d)), opt)
 			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
 	}

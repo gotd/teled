@@ -2,32 +2,13 @@
 
 WIP Telegram Server in Go.
 
-Able to handle key exchange and establish connection:
+Able to handle key exchange, establish connections, recieve requests.
+
+Not able to handle temp keys:
 ```
- INFO    cmd/root.go:50  Listening       {"addr": "localhost:10443", "dc": 1}
- INFO    tgtest/server.go:92     Serving
-DEBUG   tgtest/loop.go:40       User connected
-DEBUG   tgtest/loop.go:73       Starting key exchange
-DEBUG   exchange        exchange/server_flow.go:110     Received client ReqPqMultiRequest
-DEBUG   exchange        exchange/server_flow.go:126     Sending ResPQ   {"pq": "1724114033281923457"}
-DEBUG   exchange        exchange/server_flow.go:151     Received ReqPQ again
-DEBUG   exchange        exchange/server_flow.go:126     Sending ResPQ   {"pq": "1724114033281923457"}
-DEBUG   exchange        exchange/server_flow.go:155     Received client ReqDHParamsRequest
-DEBUG   exchange        exchange/server_flow.go:220     Sending ServerDHParamsOk        {"g": 3}
-DEBUG   exchange        exchange/server_flow.go:234     Received client SetClientDHParamsRequest
-DEBUG   exchange        exchange/server_flow.go:259     Sending DhGenOk
-DEBUG   tgtest/loop.go:73       Starting key exchange
-DEBUG   exchange        exchange/server_flow.go:110     Received client ReqPqMultiRequest
-DEBUG   exchange        exchange/server_flow.go:126     Sending ResPQ   {"pq": "1724114033281923457"}
-DEBUG   exchange        exchange/server_flow.go:155     Received client ReqDHParamsRequest
-DEBUG   exchange        exchange/server_flow.go:220     Sending ServerDHParamsOk        {"g": 3}
-DEBUG   exchange        exchange/server_flow.go:234     Received client SetClientDHParamsRequest
-DEBUG   exchange        exchange/server_flow.go:259     Sending DhGenOk
-DEBUG   tgtest/handle.go:40     Send handleSessionCreated event {"session_id": -5370167338796072529, "key_id": "37c12945217bbf85"}
-DEBUG   tgtest/handle.go:70     Got request     {"session_id": -5370167338796072529, "key_id": "37c12945217bbf85", "msg_id": 7131794985135297912, "type": "message_container"}
-DEBUG   tgtest/handle.go:70     Got request     {"session_id": -5370167338796072529, "key_id": "37c12945217bbf85", "msg_id": 7131794985134798188, "type": "auth.bindTempAuthKey#cdd42a05"}
-DEBUG   tgtest/handle.go:70     Got request     {"session_id": -5370167338796072529, "key_id": "37c12945217bbf85", "msg_id": 7131794985135247744, "type": "ping_delay_disconnect#f3427b8c"}
-DEBUG   tgtest/loop.go:40       User connected
+[22:33:24.344 01-0003566] Connection 193(dc:1,127.0.0.1:10443) Error: Error packet received, code = -404 (connection_abstract.cpp : 25)
+[22:33:24.344 01-0003567] MTP Info: -404 error received in 1 with temporary key, assuming it was destroyed.
+[22:33:24.344 01-0003568] MTP Info: auth key id set to id 0 (session_private.cpp : 25)
 ```
 
 ## Using
