@@ -1,6 +1,6 @@
 # teled
 
-WIP Telegram Server in Go.
+WIP Telegram Server in Go, based on [gotd](https://github.com/gotd/td).
 
 Able to log in, starting sequence is completed until `contacts.resolveUsername#f93ccba3`
 for user `tdhbcfiles`, which should be "Favorites", then client coredumps.
