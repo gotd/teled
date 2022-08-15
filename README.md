@@ -85,13 +85,13 @@ poetry run gen_dockerfile | docker build -t tdesktop:centos_env -
 #### Building fork
 From tdesktop root directory:
 ```bash
-docker run --rm -it \
+docker run --user $(id -u "$USER") --rm -it \
     -v $PWD:/usr/src/tdesktop \
     -e DEBUG=1 \
     tdesktop:centos_env \
     /usr/src/tdesktop/Telegram/build/docker/centos_env/build.sh \
     -D TDESKTOP_API_ID=17349 \
     -D TDESKTOP_API_HASH=344583e45741c457fe1862106095a5eb \
-    -D DESKTOP_APP_USE_PACKAGED=OFF \
+    -D DESKTOP_APP_USE_PACKAGED=OFF
 ```
 
