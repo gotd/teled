@@ -1,12 +1,11 @@
 # teled
 
-WIP Telegram Server in Go, based on [gotd](https://github.com/gotd/td).
+WIP Testing Telegram (MTProto) Server in Go, based on [gotd](https://github.com/gotd/td).
 
-Able to log in, starting sequence is completed until `contacts.resolveUsername#f93ccba3`
-for user `tdhbcfiles`, which should be "Favorites", then client coredumps.
+![](/src/gotd/teled/_media/login.png "Login screenshot")
+![](/src/gotd/teled/_media/tos.png "ToS screenshot")
 
 Documentation is in progress.
-Later the automated patch utility will be provided.
 
 Do not use Telegram name or branding for custom clients.
 

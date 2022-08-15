@@ -41,6 +41,7 @@ func (a *application) setDispatcher(d *tg.ServerDispatcher) {
 	d.OnHelpAcceptTermsOfService(a.helpAcceptTermsOfService)
 	d.OnMessagesGetPeerDialogs(a.messagesGetPeerDialogs)
 	d.OnContactsResolveUsername(a.contactsResolveUsername)
+	d.OnChannelsGetMessages(a.channelsGetMessages)
 
 	a.d = d
 }
@@ -168,7 +169,7 @@ func (a *application) helpGetTermsOfServiceUpdate(ctx context.Context) (tg.HelpT
 			ID: tg.DataJSON{
 				Data: "1",
 			},
-			Text: "Hello, World",
+			Text: "Go Domination Ensured",
 		},
 	}, nil
 }
@@ -237,9 +238,25 @@ func (a *application) messagesGetPeerDialogs(ctx context.Context, peers []tg.Inp
 }
 
 func (a *application) contactsResolveUsername(ctx context.Context, username string) (*tg.ContactsResolvedPeer, error) {
-	// TODO: handle tdhbcfiles
+	// Only tdhbcfiles is supported.
 	a.lg.Debug("ContactsResolveUsername", zap.String("username", username))
+	const peerID = 1300
 	return &tg.ContactsResolvedPeer{
-		Peer: &tg.PeerUser{UserID: 11},
+		Peer: &tg.PeerChannel{ChannelID: peerID},
+		Chats: []tg.ChatClass{
+			&tg.Channel{
+				Left:       true,
+				AccessHash: 1337,
+				Title:      username,
+				Username:   username,
+				Photo:      &tg.ChatPhotoEmpty{},
+				Date:       int(time.Now().Unix()),
+				ID:         peerID,
+			},
+		},
 	}, nil
+}
+
+func (a *application) channelsGetMessages(ctx context.Context, request *tg.ChannelsGetMessagesRequest) (tg.MessagesMessagesClass, error) {
+	return &tg.MessagesChannelMessages{}, nil
 }
