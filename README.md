@@ -2,8 +2,8 @@
 
 WIP Testing Telegram (MTProto) Server in Go, based on [gotd](https://github.com/gotd/td).
 
-![](/src/gotd/teled/_media/login.png "Login screenshot")
-![](/src/gotd/teled/_media/tos.png "ToS screenshot")
+![](_media/login.png "Login screenshot")
+![](_media/tos.png "ToS screenshot")
 
 Documentation is in progress.
 
