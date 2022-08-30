@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/go-faster/errors v0.6.1
 	github.com/go-faster/jx v0.39.0
-	github.com/gotd/td v0.68.0
+	github.com/gotd/td v0.68.1
 	github.com/quasilyte/go-ruleguard/dsl v0.3.21
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
