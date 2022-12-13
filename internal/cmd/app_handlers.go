@@ -65,7 +65,7 @@ func (a *application) helpGetCountriesList(ctx context.Context, req *tg.HelpGetC
 		Hash: 1337,
 		Countries: []tg.HelpCountry{
 			{
-				Iso2:        "AF",
+				ISO2:        "AF",
 				Name:        "Kekistan",
 				DefaultName: "Kekistan",
 				CountryCodes: []tg.HelpCountryCode{
