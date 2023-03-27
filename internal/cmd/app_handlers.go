@@ -87,8 +87,6 @@ func (a *application) helpGetCountriesList(ctx context.Context, req *tg.HelpGetC
 
 func (a *application) helpGetConfig(ctx context.Context) (*tg.Config, error) {
 	return &tg.Config{
-		PhonecallsEnabled: true,
-
 		Date:    int(time.Now().Unix()),
 		Expires: int(time.Now().AddDate(0, 0, 1).Unix()),
 
@@ -103,13 +101,16 @@ func (a *application) helpGetConfig(ctx context.Context) (*tg.Config, error) {
 	}, nil
 }
 
-func (a *application) helpGetAppConfig(ctx context.Context) (tg.JSONValueClass, error) {
+func (a *application) helpGetAppConfig(ctx context.Context, h int) (tg.HelpAppConfigClass, error) {
 	d := jx.DecodeStr(defaultAppConfig)
 	v, err := tljson.Decode(d)
 	if err != nil {
 		return nil, errors.Wrap(err, "decode")
 	}
-	return v, nil
+
+	return &tg.HelpAppConfig{
+		Config: v,
+	}, nil
 }
 
 func (a *application) authExportLoginToken(ctx context.Context, req *tg.AuthExportLoginTokenRequest) (tg.AuthLoginTokenClass, error) {
@@ -124,7 +125,7 @@ func (a *application) authBindTempAuthKey(ctx context.Context, req *tg.AuthBindT
 	return true, nil
 }
 
-func (a *application) authSendCode(ctx context.Context, req *tg.AuthSendCodeRequest) (*tg.AuthSentCode, error) {
+func (a *application) authSendCode(ctx context.Context, req *tg.AuthSendCodeRequest) (tg.AuthSentCodeClass, error) {
 	return &tg.AuthSentCode{
 		Type:          &tg.AuthSentCodeTypeSMS{Length: 2},
 		PhoneCodeHash: "do-u-knw-da-way",
