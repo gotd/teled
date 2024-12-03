@@ -3,7 +3,7 @@ module github.com/gotd/teled
 go 1.18
 
 require (
-	github.com/go-faster/errors v0.6.1
+	github.com/go-faster/errors v0.7.1
 	github.com/go-faster/jx v1.1.0
 	github.com/gotd/td v0.88.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.22
