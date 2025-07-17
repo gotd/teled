@@ -1,6 +1,6 @@
 module github.com/gotd/teled
 
-go 1.18
+go 1.23.3
 
 require (
 	github.com/go-faster/errors v0.7.1
@@ -8,7 +8,7 @@ require (
 	github.com/gotd/td v0.124.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.22
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.7
 	go.uber.org/zap v1.27.0
 )
 
