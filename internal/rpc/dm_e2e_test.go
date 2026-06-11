@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/objstore"
 	"github.com/gotd/teled/internal/pgtest"
 )
 
@@ -50,7 +52,9 @@ func newTestEnv(t *testing.T, ctx context.Context, g *tdsync.CancellableGroup) *
 	require.NoError(t, err)
 	addr := ln.Addr().(*net.TCPAddr)
 
-	handler := New(log.Named("rpc"), database, dcID, addr.IP.String(), addr.Port)
+	store, err := objstore.NewFS(t.TempDir())
+	require.NoError(t, err)
+	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port)
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool),
@@ -184,6 +188,53 @@ func TestDMSendAndHistory(t *testing.T) {
 		hist, err = api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
 		require.NoError(t, err)
 		require.Empty(t, hist.(*tg.MessagesMessages).Messages)
+	})
+
+	g.Cancel()
+	if err := g.Wait(); err != nil {
+		require.ErrorIs(t, err, context.Canceled)
+	}
+}
+
+// TestMediaRoundTrip uploads a photo, sends it as a DM, and downloads it back.
+func TestMediaRoundTrip(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	storageA, storageB := &session.StorageMemory{}, &session.StorageMemory{}
+	var userB *tg.User
+	data := bytes.Repeat([]byte("teled-photo-bytes!"), 500) // ~9KB, one part.
+
+	env.runClient(ctx, t, storageB, func(api *tg.Client) { userB = signUp(ctx, t, api, "+14000000001", "Bob") })
+
+	env.runClient(ctx, t, storageA, func(api *tg.Client) {
+		_ = signUp(ctx, t, api, "+14000000002", "Alice")
+
+		const fileID = 0xBEEF
+		ok, err := api.UploadSaveFilePart(ctx, &tg.UploadSaveFilePartRequest{FileID: fileID, FilePart: 0, Bytes: data})
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		updResp, err := api.MessagesSendMedia(ctx, &tg.MessagesSendMediaRequest{
+			Peer:     inputPeer(userB),
+			Media:    &tg.InputMediaUploadedPhoto{File: &tg.InputFile{ID: fileID, Parts: 1, Name: "p.jpg"}},
+			RandomID: 42,
+		})
+		require.NoError(t, err)
+		msg := updResp.(*tg.Updates).Updates[1].(*tg.UpdateNewMessage).Message.(*tg.Message)
+		photo := msg.Media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
+
+		// Download it back via getFile.
+		uf, err := api.UploadGetFile(ctx, &tg.UploadGetFileRequest{
+			Location: &tg.InputPhotoFileLocation{
+				ID: photo.ID, AccessHash: photo.AccessHash, FileReference: photo.FileReference, ThumbSize: "x",
+			},
+			Offset: 0, Limit: 1024 * 1024,
+		})
+		require.NoError(t, err)
+		require.Equal(t, data, uf.(*tg.UploadFile).Bytes)
 	})
 
 	g.Cancel()

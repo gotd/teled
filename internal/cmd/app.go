@@ -15,6 +15,7 @@ type application struct {
 	Port           int
 	PrivateKeyPath string
 	PostgresURI    string
+	ObjectStoreDir string
 }
 
 // Addr returns the server listen address.

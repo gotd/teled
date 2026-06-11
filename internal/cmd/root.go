@@ -13,6 +13,7 @@ import (
 
 	"github.com/gotd/teled/internal/key"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/objstore"
 	"github.com/gotd/teled/internal/rpc"
 )
 
@@ -48,6 +49,11 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			if err != nil {
 				return errors.Wrap(err, "failed to listen")
 			}
+			store, err := objstore.NewFS(a.ObjectStoreDir)
+			if err != nil {
+				return errors.Wrap(err, "object store")
+			}
+
 			const dc = 1
 			opt := mtproto.ServerOptions{
 				DC:     dc,
@@ -58,7 +64,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.String("addr", a.Addr()),
 				zap.Int("dc", opt.DC),
 			)
-			handler := rpc.New(a.lg, database, dc, a.Host, a.Port)
+			handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port)
 			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
 			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
@@ -71,6 +77,8 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 		f.StringVar(&a.PrivateKeyPath, "key", "", "Path to PEM-encoded private key")
 		f.StringVar(&a.PostgresURI, "postgres-uri", os.Getenv("DATABASE_URL"),
 			"PostgreSQL DSN (postgres://...); if empty, auth keys are kept in memory")
+		f.StringVar(&a.ObjectStoreDir, "object-store-dir", "./objects",
+			"Local filesystem directory for media object storage")
 
 		markFlagsRequired(f, "key")
 	}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/objstore"
 	"github.com/gotd/teled/internal/pgtest"
 )
 
@@ -50,7 +51,9 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 	require.NoError(t, err)
 	addr := ln.Addr().(*net.TCPAddr)
 
-	handler := New(log.Named("rpc"), database, dcID, addr.IP.String(), addr.Port)
+	store, err := objstore.NewFS(t.TempDir())
+	require.NoError(t, err)
+	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port)
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool), // Persisted: sessions.key_id FK -> auth_keys.

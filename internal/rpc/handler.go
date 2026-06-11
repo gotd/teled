@@ -18,20 +18,25 @@ import (
 
 // Handler owns the server dispatcher and backs RPCs with storage.
 type Handler struct {
-	lg   *zap.Logger
-	db   *db.DB
-	dc   int
-	host string
-	port int
+	lg    *zap.Logger
+	db    *db.DB
+	store teled.ObjectStore
+	dc    int
+	host  string
+	port  int
 
 	sessions   *sessionRegistry
+	staging    *uploadStaging
 	dispatcher *tg.ServerDispatcher
 }
 
-// New builds a Handler and registers all supported RPCs. database may be nil,
-// in which case storage-backed RPCs return an error.
-func New(lg *zap.Logger, database *db.DB, dc int, host string, port int) *Handler {
-	h := &Handler{lg: lg, db: database, dc: dc, host: host, port: port, sessions: newSessionRegistry()}
+// New builds a Handler and registers all supported RPCs. database and store may
+// be nil, in which case the corresponding RPCs return an error.
+func New(lg *zap.Logger, database *db.DB, store teled.ObjectStore, dc int, host string, port int) *Handler {
+	h := &Handler{
+		lg: lg, db: database, store: store, dc: dc, host: host, port: port,
+		sessions: newSessionRegistry(), staging: newUploadStaging(),
+	}
 	d := tg.NewServerDispatcher(h.fallback)
 	h.register(d)
 	h.dispatcher = d

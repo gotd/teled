@@ -55,6 +55,12 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnUpdatesGetState(h.updatesGetState)
 	d.OnUpdatesGetDifference(h.updatesGetDifference)
 
+	// Media.
+	d.OnUploadSaveFilePart(h.uploadSaveFilePart)
+	d.OnUploadSaveBigFilePart(h.uploadSaveBigFilePart)
+	d.OnMessagesSendMedia(h.messagesSendMedia)
+	d.OnUploadGetFile(h.uploadGetFile)
+
 	// Channels (out of scope; stub).
 	d.OnChannelsGetMessages(h.channelsGetMessages)
 }
