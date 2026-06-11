@@ -191,3 +191,60 @@ func TestDMSendAndHistory(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	}
 }
+
+// TestUpdatesDifference verifies that messages received while a client is
+// offline are recovered via updates.getState + getDifference.
+func TestUpdatesDifference(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	storageA, storageB := &session.StorageMemory{}, &session.StorageMemory{}
+	var userA, userB *tg.User
+	var basePts int
+
+	env.runClient(ctx, t, storageA, func(api *tg.Client) { userA = signUp(ctx, t, api, "+13111111111", "Alice") })
+
+	// B signs up and records its baseline pts, then goes offline.
+	env.runClient(ctx, t, storageB, func(api *tg.Client) {
+		userB = signUp(ctx, t, api, "+13222222222", "Bob")
+		st, err := api.UpdatesGetState(ctx)
+		require.NoError(t, err)
+		basePts = st.Pts
+	})
+
+	// A sends two messages while B is offline.
+	env.runClient(ctx, t, storageA, func(api *tg.Client) {
+		for i, text := range []string{"one", "two"} {
+			_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+				Peer: inputPeer(userB), Message: text, RandomID: int64(100 + i),
+			})
+			require.NoError(t, err)
+		}
+	})
+
+	// B reconnects and recovers the missed messages via getDifference.
+	env.runClient(ctx, t, storageB, func(api *tg.Client) {
+		diff, err := api.UpdatesGetDifference(ctx, &tg.UpdatesGetDifferenceRequest{
+			Pts: basePts, Date: 1, Qts: 0,
+		})
+		require.NoError(t, err)
+		d := diff.(*tg.UpdatesDifference)
+		require.Len(t, d.NewMessages, 2)
+		require.Greater(t, d.State.Pts, basePts)
+
+		// Caught up: a second call returns empty.
+		empty, err := api.UpdatesGetDifference(ctx, &tg.UpdatesGetDifferenceRequest{
+			Pts: d.State.Pts, Date: 1, Qts: 0,
+		})
+		require.NoError(t, err)
+		require.IsType(t, &tg.UpdatesDifferenceEmpty{}, empty)
+		_ = userA
+	})
+
+	g.Cancel()
+	if err := g.Wait(); err != nil {
+		require.ErrorIs(t, err, context.Canceled)
+	}
+}

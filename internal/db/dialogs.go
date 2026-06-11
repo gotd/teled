@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 
 	"github.com/go-faster/errors"
@@ -66,11 +67,21 @@ WHERE r.global_id = m.global_id AND r.user_id = $1 AND NOT r.out AND r.message_i
 		return 0, errors.Wrap(err, "mark read")
 	}
 
-	if _, pts, err = allocate(ctx, tx, self); err != nil {
+	if pts, err = allocatePts(ctx, tx, self, 1); err != nil {
 		return 0, errors.Wrap(err, "allocate")
+	}
+	extra, _ := json.Marshal(readExtra{Peer: peer, MaxID: maxID})
+	if err := logUpdate(ctx, tx, self, pts, 1, updReadInbox, nil, extra); err != nil {
+		return 0, errors.Wrap(err, "log read")
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, errors.Wrap(err, "commit")
 	}
 	return pts, nil
+}
+
+// readExtra is the updates_log payload for a read event.
+type readExtra struct {
+	Peer  int64 `json:"peer"`
+	MaxID int64 `json:"max_id"`
 }

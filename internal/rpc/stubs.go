@@ -134,14 +134,6 @@ func (h *Handler) messagesGetPeerDialogs(context.Context, []tg.InputDialogPeerCl
 	return &tg.MessagesPeerDialogs{}, nil
 }
 
-func (h *Handler) updatesGetState(context.Context) (*tg.UpdatesState, error) {
-	return &tg.UpdatesState{Date: int(time.Now().Unix())}, nil
-}
-
-func (h *Handler) updatesGetDifference(context.Context, *tg.UpdatesGetDifferenceRequest) (tg.UpdatesDifferenceClass, error) {
-	return &tg.UpdatesDifferenceEmpty{Date: int(time.Now().Unix())}, nil
-}
-
 func (h *Handler) channelsGetMessages(context.Context, *tg.ChannelsGetMessagesRequest) (tg.MessagesMessagesClass, error) {
 	return &tg.MessagesChannelMessages{}, nil
 }

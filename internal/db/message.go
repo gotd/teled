@@ -11,6 +11,14 @@ import (
 	"github.com/gotd/teled"
 )
 
+// Update log types.
+const (
+	updNewMessage  = "new"
+	updEditMessage = "edit"
+	updDelete      = "delete"
+	updReadInbox   = "readinbox"
+)
+
 // allocate bumps the per-account local message id and common pts in one step,
 // returning the new values. Must run inside the send transaction.
 func allocate(ctx context.Context, tx pgx.Tx, userID int64) (localID int64, pts int, err error) {
@@ -19,6 +27,23 @@ func allocate(ctx context.Context, tx pgx.Tx, userID int64) (localID int64, pts 
 		 WHERE id = $1 RETURNING last_message_id, pts`, userID,
 	).Scan(&localID, &pts)
 	return localID, pts, err
+}
+
+// allocatePts advances only the common pts by count, returning the new value.
+func allocatePts(ctx context.Context, tx pgx.Tx, userID int64, count int) (pts int, err error) {
+	err = tx.QueryRow(ctx,
+		`UPDATE users SET pts = pts + $2 WHERE id = $1 RETURNING pts`, userID, count,
+	).Scan(&pts)
+	return pts, err
+}
+
+// logUpdate appends an entry to the per-account update log.
+func logUpdate(ctx context.Context, tx pgx.Tx, userID int64, pts, ptsCount int, typ string, globalID *int64, extra []byte) error {
+	_, err := tx.Exec(ctx,
+		`INSERT INTO updates_log (user_id, pts, pts_count, type, global_id, extra)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		userID, pts, ptsCount, typ, globalID, extra)
+	return err
 }
 
 // SendMessage persists a DM atomically: the canonical message plus a per-account
@@ -48,6 +73,9 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	if err := insertRef(ctx, tx, fromID, sent.SenderLocalID, sent.GlobalID, true, false); err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "sender ref")
 	}
+	if err := logUpdate(ctx, tx, fromID, sent.SenderPts, 1, updNewMessage, &sent.GlobalID, nil); err != nil {
+		return teled.SentMessage{}, errors.Wrap(err, "log sender")
+	}
 
 	if !sent.SelfChat {
 		sent.RecipientLocalID, sent.RecipientPts, err = allocate(ctx, tx, peerID)
@@ -56,6 +84,9 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 		}
 		if err := insertRef(ctx, tx, peerID, sent.RecipientLocalID, sent.GlobalID, false, true); err != nil {
 			return teled.SentMessage{}, errors.Wrap(err, "recipient ref")
+		}
+		if err := logUpdate(ctx, tx, peerID, sent.RecipientPts, 1, updNewMessage, &sent.GlobalID, nil); err != nil {
+			return teled.SentMessage{}, errors.Wrap(err, "log recipient")
 		}
 	}
 

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	gerrors "github.com/go-faster/errors"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/gotd/teled"
 )
+
+// deleteExtra is the updates_log payload for a delete event.
+type deleteExtra struct {
+	IDs []int64 `json:"ids"`
+}
 
 // EditMessage updates the text of a message the caller sent, returning the data
 // needed to emit edit updates to both participants.
@@ -43,8 +49,11 @@ func (db *DB) EditMessage(ctx context.Context, self, localID int64, text string)
 		return teled.EditResult{}, gerrors.Wrap(err, "update message")
 	}
 
-	if _, res.SelfPts, err = allocate(ctx, tx, self); err != nil {
+	if res.SelfPts, err = allocatePts(ctx, tx, self, 1); err != nil {
 		return teled.EditResult{}, gerrors.Wrap(err, "allocate self")
+	}
+	if err := logUpdate(ctx, tx, self, res.SelfPts, 1, updEditMessage, &globalID, nil); err != nil {
+		return teled.EditResult{}, gerrors.Wrap(err, "log self")
 	}
 
 	if res.PeerUserID != self {
@@ -52,8 +61,11 @@ func (db *DB) EditMessage(ctx context.Context, self, localID int64, text string)
 			`SELECT message_id FROM message_refs WHERE user_id = $1 AND global_id = $2`,
 			res.PeerUserID, globalID,
 		).Scan(&res.PeerLocalID)
-		if _, res.PeerPts, err = allocate(ctx, tx, res.PeerUserID); err != nil {
+		if res.PeerPts, err = allocatePts(ctx, tx, res.PeerUserID, 1); err != nil {
 			return teled.EditResult{}, gerrors.Wrap(err, "allocate peer")
+		}
+		if err := logUpdate(ctx, tx, res.PeerUserID, res.PeerPts, 1, updEditMessage, &globalID, nil); err != nil {
+			return teled.EditResult{}, gerrors.Wrap(err, "log peer")
 		}
 	}
 
@@ -93,8 +105,12 @@ func (db *DB) DeleteMessages(ctx context.Context, self int64, localIDs []int64) 
 
 	res := teled.DeleteResult{LocalIDs: deleted, PtsCount: len(deleted)}
 	if len(deleted) > 0 {
-		if _, res.Pts, err = allocate(ctx, tx, self); err != nil {
+		if res.Pts, err = allocatePts(ctx, tx, self, len(deleted)); err != nil {
 			return teled.DeleteResult{}, gerrors.Wrap(err, "allocate")
+		}
+		extra, _ := json.Marshal(deleteExtra{IDs: deleted})
+		if err := logUpdate(ctx, tx, self, res.Pts, len(deleted), updDelete, nil, extra); err != nil {
+			return teled.DeleteResult{}, gerrors.Wrap(err, "log delete")
 		}
 	}
 
