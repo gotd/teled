@@ -46,9 +46,11 @@ func (a *application) setDispatcher(d *tg.ServerDispatcher) {
 	a.d = d
 }
 
-func (a application) messagesGetDialogFilters(ctx context.Context) ([]tg.DialogFilterClass, error) {
-	return []tg.DialogFilterClass{
-		&tg.DialogFilterDefault{},
+func (a application) messagesGetDialogFilters(ctx context.Context) (*tg.MessagesDialogFilters, error) {
+	return &tg.MessagesDialogFilters{
+		Filters: []tg.DialogFilterClass{
+			&tg.DialogFilterDefault{},
+		},
 	}, nil
 }
 
@@ -238,8 +240,9 @@ func (a *application) messagesGetPeerDialogs(ctx context.Context, peers []tg.Inp
 	return &tg.MessagesPeerDialogs{}, nil
 }
 
-func (a *application) contactsResolveUsername(ctx context.Context, username string) (*tg.ContactsResolvedPeer, error) {
+func (a *application) contactsResolveUsername(ctx context.Context, request *tg.ContactsResolveUsernameRequest) (*tg.ContactsResolvedPeer, error) {
 	// Only tdhbcfiles is supported.
+	username := request.Username
 	a.lg.Debug("ContactsResolveUsername", zap.String("username", username))
 	const peerID = 1300
 	return &tg.ContactsResolvedPeer{
