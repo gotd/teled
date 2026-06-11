@@ -38,6 +38,10 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	// Messages.
 	d.OnMessagesSendMessage(h.messagesSendMessage)
 	d.OnMessagesGetHistory(h.messagesGetHistory)
+	d.OnMessagesGetDialogs(h.messagesGetDialogs)
+	d.OnMessagesReadHistory(h.messagesReadHistory)
+	d.OnMessagesEditMessage(h.messagesEditMessage)
+	d.OnMessagesDeleteMessages(h.messagesDeleteMessages)
 	d.OnMessagesGetDialogFilters(h.messagesGetDialogFilters)
 	d.OnMessagesGetAvailableReactions(h.messagesGetAvailableReactions)
 	d.OnMessagesGetStickerSet(h.messagesGetStickerSet)

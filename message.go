@@ -15,6 +15,32 @@ type Message struct {
 	RandomID   int64     // sender-provided dedup id
 }
 
+// Dialog is one conversation in an account's dialog list.
+type Dialog struct {
+	PeerUserID     int64
+	TopMessageID   int64
+	ReadInboxMaxID int64
+	UnreadCount    int
+}
+
+// EditResult is the outcome of editing a message.
+type EditResult struct {
+	SelfLocalID int64
+	SelfPts     int
+	PeerUserID  int64
+	PeerLocalID int64 // 0 when the peer has no copy (self-chat)
+	PeerPts     int
+	Date        time.Time
+	EditDate    time.Time
+}
+
+// DeleteResult is the outcome of deleting messages.
+type DeleteResult struct {
+	Pts      int
+	PtsCount int
+	LocalIDs []int64 // the caller's local ids actually deleted
+}
+
 // SentMessage is the result of persisting a DM: the per-account local ids and
 // pts allocated for each participant.
 type SentMessage struct {

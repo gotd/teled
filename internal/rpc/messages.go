@@ -56,17 +56,26 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 	}, nil
 }
 
+// push best-effort delivers updates to a user's live sessions.
+func (h *Handler) push(ctx context.Context, userID int64, users []tg.UserClass, date int, updates ...tg.UpdateClass) {
+	server := serverFrom(ctx)
+	sessions := h.sessions.get(userID)
+	if server == nil || len(sessions) == 0 {
+		return
+	}
+	wrap := &tg.Updates{Updates: updates, Users: users, Date: date}
+	for _, s := range sessions {
+		if err := server.Send(ctx, s, proto.MessageFromServer, wrap); err != nil {
+			h.lg.Debug("push failed", zap.Error(err))
+		}
+	}
+}
+
 // deliver best-effort pushes the new message to the recipient's live sessions.
 func (h *Handler) deliver(ctx context.Context, from, peer teled.User, sent teled.SentMessage, text string) {
 	if sent.SelfChat {
 		return
 	}
-	server := serverFrom(ctx)
-	sessions := h.sessions.get(peer.ID)
-	if server == nil || len(sessions) == 0 {
-		return
-	}
-
 	incoming := dmMessage(teled.Message{
 		LocalID:    sent.RecipientLocalID,
 		FromUserID: from.ID,
@@ -75,17 +84,11 @@ func (h *Handler) deliver(ctx context.Context, from, peer teled.User, sent teled
 		Text:       text,
 		Date:       sent.Date,
 	})
-	upd := &tg.UpdateNewMessage{Message: incoming, Pts: sent.RecipientPts, PtsCount: 1}
-	wrap := &tg.Updates{
-		Updates: []tg.UpdateClass{upd},
-		Users:   []tg.UserClass{toTGUser(from, false), toTGUser(peer, true)},
-		Date:    int(sent.Date.Unix()),
-	}
-	for _, s := range sessions {
-		if err := server.Send(ctx, s, proto.MessageFromServer, wrap); err != nil {
-			h.lg.Debug("deliver failed", zap.Error(err))
-		}
-	}
+	h.push(ctx, peer.ID,
+		[]tg.UserClass{toTGUser(from, false), toTGUser(peer, true)},
+		int(sent.Date.Unix()),
+		&tg.UpdateNewMessage{Message: incoming, Pts: sent.RecipientPts, PtsCount: 1},
+	)
 }
 
 // messagesGetHistory returns the conversation with a peer, newest first.

@@ -122,10 +122,6 @@ func (h *Handler) messagesGetAttachMenuBots(context.Context, int64) (tg.AttachMe
 	return &tg.AttachMenuBots{}, nil
 }
 
-func (h *Handler) messagesGetDialogs(context.Context, *tg.MessagesGetDialogsRequest) (tg.MessagesDialogsClass, error) {
-	return &tg.MessagesDialogs{}, nil
-}
-
 func (h *Handler) messagesGetPinnedDialogs(context.Context, int) (*tg.MessagesPeerDialogs, error) {
 	return &tg.MessagesPeerDialogs{}, nil
 }

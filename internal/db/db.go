@@ -3,6 +3,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,6 +11,10 @@ import (
 
 // psql builds queries with PostgreSQL dollar placeholders.
 var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+
+// ErrMessageID indicates a referenced message does not exist or is not editable
+// by the caller.
+var ErrMessageID = errors.New("message id invalid")
 
 // DB is the PostgreSQL-backed storage implementation.
 type DB struct {

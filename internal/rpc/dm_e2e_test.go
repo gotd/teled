@@ -139,7 +139,7 @@ func TestDMSendAndHistory(t *testing.T) {
 		require.True(t, msgs[0].(*tg.Message).Out)
 	})
 
-	// B reads its own (incoming) view of the conversation.
+	// B reads its own (incoming) view, sees a dialog with 1 unread, reads it.
 	env.runClient(ctx, t, storageB, func(api *tg.Client) {
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userA), Limit: 10})
 		require.NoError(t, err)
@@ -148,6 +148,42 @@ func TestDMSendAndHistory(t *testing.T) {
 		m := msgs[0].(*tg.Message)
 		require.False(t, m.Out)
 		require.Equal(t, "hello bob", m.Message)
+
+		dlgs, err := api.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerEmpty{}})
+		require.NoError(t, err)
+		d := dlgs.(*tg.MessagesDialogs)
+		require.Len(t, d.Dialogs, 1)
+		require.Equal(t, 1, d.Dialogs[0].(*tg.Dialog).UnreadCount)
+
+		aff, err := api.MessagesReadHistory(ctx, &tg.MessagesReadHistoryRequest{Peer: inputPeer(userA), MaxID: m.ID})
+		require.NoError(t, err)
+		require.Positive(t, aff.Pts)
+
+		dlgs, err = api.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerEmpty{}})
+		require.NoError(t, err)
+		require.Equal(t, 0, dlgs.(*tg.MessagesDialogs).Dialogs[0].(*tg.Dialog).UnreadCount)
+	})
+
+	// A edits then deletes its message.
+	env.runClient(ctx, t, storageA, func(api *tg.Client) {
+		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
+		require.NoError(t, err)
+		id := hist.(*tg.MessagesMessages).Messages[0].(*tg.Message).ID
+
+		edited, err := api.MessagesEditMessage(ctx, &tg.MessagesEditMessageRequest{
+			Peer: inputPeer(userB), ID: id, Message: "edited",
+		})
+		require.NoError(t, err)
+		em := edited.(*tg.Updates).Updates[0].(*tg.UpdateEditMessage).Message.(*tg.Message)
+		require.Equal(t, "edited", em.Message)
+
+		aff, err := api.MessagesDeleteMessages(ctx, &tg.MessagesDeleteMessagesRequest{ID: []int{id}})
+		require.NoError(t, err)
+		require.Equal(t, 1, aff.PtsCount)
+
+		hist, err = api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
+		require.NoError(t, err)
+		require.Empty(t, hist.(*tg.MessagesMessages).Messages)
 	})
 
 	g.Cancel()
