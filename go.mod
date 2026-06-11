@@ -7,7 +7,7 @@ require (
 	github.com/go-faster/jx v1.2.0
 	github.com/gotd/td v0.151.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.22
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	go.uber.org/zap v1.28.0
 )
