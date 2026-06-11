@@ -29,9 +29,11 @@ func (db *DB) GetState(ctx context.Context, self int64) (teled.State, error) {
 func (db *DB) MessageByGlobal(ctx context.Context, self, globalID int64) (teled.Message, bool, error) {
 	q := `
 SELECT r.message_id, r.out, m.global_id, m.from_user_id, m.text, m.date, m.edit_date, m.random_id,
-       CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS other
+       CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS other,
+       f.id, f.owner_user_id, f.access_hash, f.object_key, f.size, f.mime, f.sha256, f.file_reference, f.kind, f.created_at
 FROM message_refs r
 JOIN messages m ON m.global_id = r.global_id
+LEFT JOIN files f ON f.id = m.media_file_id
 WHERE r.user_id = $1 AND r.global_id = $2`
 	rows, err := db.pool.Query(ctx, q, self, globalID)
 	if err != nil {

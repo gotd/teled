@@ -235,6 +235,17 @@ func TestMediaRoundTrip(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, data, uf.(*tg.UploadFile).Bytes)
+
+		// The media must re-render when the message is fetched from history.
+		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
+		require.NoError(t, err)
+		msgs := hist.(*tg.MessagesMessages).Messages
+		require.Len(t, msgs, 1)
+		histMsg := msgs[0].(*tg.Message)
+		histPhoto := histMsg.Media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
+		require.Equal(t, photo.ID, histPhoto.ID)
+		require.Equal(t, photo.AccessHash, histPhoto.AccessHash)
+		require.Equal(t, photo.FileReference, histPhoto.FileReference)
 	})
 
 	g.Cancel()

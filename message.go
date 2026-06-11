@@ -13,6 +13,7 @@ type Message struct {
 	Date       time.Time // sent time
 	EditDate   time.Time // zero if never edited
 	RandomID   int64     // sender-provided dedup id
+	Media      *File     // attached media, nil when text-only
 }
 
 // Dialog is one conversation in an account's dialog list.

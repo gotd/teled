@@ -30,7 +30,7 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 		return nil, err
 	}
 
-	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID)
+	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID, 0)
 	if err != nil {
 		return nil, h.internal("send message", err)
 	}

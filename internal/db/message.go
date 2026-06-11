@@ -47,8 +47,9 @@ func logUpdate(ctx context.Context, tx pgx.Tx, userID int64, pts, ptsCount int, 
 }
 
 // SendMessage persists a DM atomically: the canonical message plus a per-account
-// ref (with its own local id and pts) for sender and recipient.
-func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string, randomID int64) (teled.SentMessage, error) {
+// ref (with its own local id and pts) for sender and recipient. A non-zero
+// mediaFileID attaches stored media so the message re-renders in history.
+func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string, randomID, mediaFileID int64) (teled.SentMessage, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "begin")
@@ -58,10 +59,14 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	var sent teled.SentMessage
 	sent.SelfChat = fromID == peerID
 
+	var media *int64
+	if mediaFileID != 0 {
+		media = &mediaFileID
+	}
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO messages (from_user_id, peer_user_id, text, random_id)
-		 VALUES ($1, $2, $3, $4) RETURNING global_id, date`,
-		fromID, peerID, text, randomID,
+		`INSERT INTO messages (from_user_id, peer_user_id, text, random_id, media_file_id)
+		 VALUES ($1, $2, $3, $4, $5) RETURNING global_id, date`,
+		fromID, peerID, text, randomID, media,
 	).Scan(&sent.GlobalID, &sent.Date); err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "insert message")
 	}
@@ -104,12 +109,15 @@ func insertRef(ctx context.Context, tx pgx.Tx, userID, localID, globalID int64, 
 	return err
 }
 
-// historyColumns / scan for viewer-relative messages.
+// historyColumns / scan for viewer-relative messages, with any attached media
+// joined in so the message re-renders identically to when it was sent.
 const historySelect = `
 SELECT r.message_id, r.out, m.global_id, m.from_user_id, m.text, m.date, m.edit_date, m.random_id,
-       CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS other
+       CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS other,
+       f.id, f.owner_user_id, f.access_hash, f.object_key, f.size, f.mime, f.sha256, f.file_reference, f.kind, f.created_at
 FROM message_refs r
 JOIN messages m ON m.global_id = r.global_id
+LEFT JOIN files f ON f.id = m.media_file_id
 WHERE r.user_id = $1 AND NOT m.deleted
   AND (CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END) = $2`
 
@@ -117,16 +125,51 @@ func scanMessage(rows pgx.Rows) (teled.Message, error) {
 	var (
 		m        teled.Message
 		editDate *time.Time
+		// Nullable media columns: a LEFT JOIN miss yields all NULLs.
+		fileID    *int64
+		ownerID   *int64
+		accessH   *int64
+		objectKey *string
+		size      *int64
+		mime      *string
+		kind      *string
+		createdAt *time.Time
+		sha       []byte
+		fileRef   []byte
 	)
 	if err := rows.Scan(
 		&m.LocalID, &m.Out, &m.GlobalID, &m.FromUserID, &m.Text, &m.Date, &editDate, &m.RandomID, &m.PeerUserID,
+		&fileID, &ownerID, &accessH, &objectKey, &size, &mime, &sha, &fileRef, &kind, &createdAt,
 	); err != nil {
 		return teled.Message{}, err
 	}
 	if editDate != nil {
 		m.EditDate = *editDate
 	}
+	if fileID != nil {
+		m.Media = &teled.File{
+			ID:            *fileID,
+			OwnerUserID:   deref(ownerID),
+			AccessHash:    deref(accessH),
+			ObjectKey:     deref(objectKey),
+			Size:          deref(size),
+			Mime:          deref(mime),
+			SHA256:        sha,
+			FileReference: fileRef,
+			Kind:          deref(kind),
+			CreatedAt:     deref(createdAt),
+		}
+	}
 	return m, nil
+}
+
+// deref returns the pointed-to value or the zero value for nil.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }
 
 // GetHistory returns up to limit messages between self and peer, newest first.

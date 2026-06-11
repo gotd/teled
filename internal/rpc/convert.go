@@ -81,6 +81,9 @@ func dmMessage(m teled.Message) *tg.Message {
 	if !m.EditDate.IsZero() {
 		msg.EditDate = int(m.EditDate.Unix())
 	}
+	if m.Media != nil {
+		msg.Media = photoMedia(*m.Media)
+	}
 	msg.SetFlags()
 	return msg
 }

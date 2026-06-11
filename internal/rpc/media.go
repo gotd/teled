@@ -86,26 +86,21 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 		return nil, h.internal("save file", err)
 	}
 
-	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID)
+	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID, file.ID)
 	if err != nil {
 		return nil, h.internal("send media message", err)
 	}
 
-	media := photoMedia(file)
 	out := dmMessage(teled.Message{
 		LocalID: sent.SenderLocalID, FromUserID: caller.ID, PeerUserID: peer.ID,
-		Out: true, Text: req.Message, Date: sent.Date,
+		Out: true, Text: req.Message, Date: sent.Date, Media: &file,
 	})
-	out.Media = media
-	out.SetFlags()
 
 	if !sent.SelfChat {
 		incoming := dmMessage(teled.Message{
 			LocalID: sent.RecipientLocalID, FromUserID: caller.ID, PeerUserID: caller.ID,
-			Out: false, Text: req.Message, Date: sent.Date,
+			Out: false, Text: req.Message, Date: sent.Date, Media: &file,
 		})
-		incoming.Media = media
-		incoming.SetFlags()
 		h.push(ctx, peer.ID,
 			[]tg.UserClass{toTGUser(caller, false), toTGUser(peer, true)},
 			int(sent.Date.Unix()),
