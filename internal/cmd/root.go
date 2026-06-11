@@ -2,10 +2,12 @@
 package cmd
 
 import (
+	"context"
 	"net"
 	"os"
 
 	"github.com/go-faster/errors"
+	"github.com/go-faster/sdk/app"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -92,15 +94,23 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 
 // Execute executes root command.
 func Execute() {
-	lg, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
+	// Telemetry is opt-in: default OTEL exporters to no-op unless the operator
+	// explicitly configures them, so the CLI does not block trying to reach a
+	// collector that is not there.
+	for _, env := range []string{
+		"OTEL_METRICS_EXPORTER",
+		"OTEL_TRACES_EXPORTER",
+		"OTEL_LOGS_EXPORTER",
+	} {
+		if _, ok := os.LookupEnv(env); !ok {
+			_ = os.Setenv(env, "none")
+		}
 	}
 
-	a := &application{
-		lg: lg,
-	}
-	if err := newRoot(a).Execute(); err != nil {
-		panic(err)
-	}
+	app.Run(func(ctx context.Context, lg *zap.Logger, _ *app.Telemetry) error {
+		a := &application{
+			lg: lg,
+		}
+		return newRoot(a).ExecuteContext(ctx)
+	})
 }
