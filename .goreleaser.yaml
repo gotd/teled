@@ -1,12 +1,11 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
+version: 2
 project_name: teled
 before:
   hooks:
     # You may remove this if you don't use go modules.
     - go mod tidy
-    # you may remove this if you don't need go generate
-    - go generate ./...
 builds:
   - env:
       - CGO_ENABLED=0
@@ -18,11 +17,17 @@ builds:
       - amd64
       - arm64
       - riscv64
+    ignore:
+      # riscv64 is only supported on linux.
+      - goos: windows
+        goarch: riscv64
+      - goos: darwin
+        goarch: riscv64
     main: ./cmd/teled
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:
