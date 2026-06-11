@@ -18,6 +18,7 @@ import (
 	"github.com/gotd/teled"
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/obs"
 )
 
 // Handler owns the server dispatcher and backs RPCs with storage.
@@ -32,14 +33,18 @@ type Handler struct {
 	sessions   *sessionRegistry
 	staging    *uploadStaging
 	dispatcher *tg.ServerDispatcher
+
+	obs observability
 }
 
 // New builds a Handler and registers all supported RPCs. database and store may
-// be nil, in which case the corresponding RPCs return an error.
-func New(lg *zap.Logger, database *db.DB, store teled.ObjectStore, dc int, host string, port int) *Handler {
+// be nil, in which case the corresponding RPCs return an error. providers
+// supplies the OpenTelemetry tracer and meter for this layer.
+func New(lg *zap.Logger, database *db.DB, store teled.ObjectStore, dc int, host string, port int, providers obs.Providers) *Handler {
 	h := &Handler{
 		lg: lg, db: database, store: store, dc: dc, host: host, port: port,
 		sessions: newSessionRegistry(), staging: newUploadStaging(),
+		obs: newObservability(providers),
 	}
 	d := tg.NewServerDispatcher(h.fallback)
 	h.register(d)
@@ -63,7 +68,7 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 		}
 	}
 
-	ctx, span := tracer.Start(ctx, method)
+	ctx, span := h.obs.tracer.Start(ctx, method)
 	defer span.End()
 	start := time.Now()
 
@@ -82,9 +87,9 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
-	rpcDuration.Record(ctx, time.Since(start).Seconds(),
+	h.obs.duration.Record(ctx, time.Since(start).Seconds(),
 		metric.WithAttributes(attribute.String("rpc.method", method)))
-	rpcRequests.Add(ctx, 1, metric.WithAttributes(
+	h.obs.requests.Add(ctx, 1, metric.WithAttributes(
 		attribute.String("rpc.method", method),
 		attribute.String("rpc.status", status),
 	))

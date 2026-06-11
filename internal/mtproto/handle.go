@@ -22,7 +22,7 @@ import (
 // the root span for the request: there is no inbound trace context in the
 // MTProto protocol, so each encrypted message starts a new trace.
 func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer) (rerr error) {
-	ctx, span := tracer.Start(ctx, "mtproto.handle", trace.WithSpanKind(trace.SpanKindServer))
+	ctx, span := s.obs.tracer.Start(ctx, "mtproto.handle", trace.WithSpanKind(trace.SpanKindServer))
 	defer func() {
 		if rerr != nil {
 			span.RecordError(rerr)
@@ -30,7 +30,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 		}
 		span.End()
 	}()
-	messages.Add(ctx, 1)
+	s.obs.messages.Add(ctx, 1)
 
 	m := &crypto.EncryptedMessage{}
 	if err := m.DecodeWithoutCopy(b); err != nil {

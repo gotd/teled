@@ -10,13 +10,14 @@ import (
 
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/queue"
 )
 
 // setupStorage initializes persistence and returns the auth-key store plus a
 // cleanup function. With no --postgres-uri it falls back to in-memory keys so
 // the server is runnable standalone (keys are then lost on restart).
-func (a *application) setupStorage(ctx context.Context) (mtproto.KeyStorage, *db.DB, func(), error) {
+func (a *application) setupStorage(ctx context.Context, providers obs.Providers) (mtproto.KeyStorage, *db.DB, func(), error) {
 	if a.PostgresURI == "" {
 		a.lg.Warn("No --postgres-uri set; auth keys are kept in memory and lost on restart")
 		return mtproto.NewInMemoryKeys(), nil, func() {}, nil
@@ -26,7 +27,7 @@ func (a *application) setupStorage(ctx context.Context) (mtproto.KeyStorage, *db
 		return nil, nil, nil, errors.Wrap(err, "migrate")
 	}
 
-	pool, err := db.Open(ctx, a.PostgresURI)
+	pool, err := db.Open(ctx, a.PostgresURI, providers)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "open database")
 	}

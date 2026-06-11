@@ -7,25 +7,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/gotd/teled"
 	"github.com/gotd/teled/internal/objstore"
+	"github.com/gotd/teled/internal/obs"
 )
 
 // TestFSTracing verifies that object store operations emit spans through the
-// global tracer provider.
+// tracer provider passed in via NewFS.
 func TestFSTracing(t *testing.T) {
 	sr := tracetest.NewSpanRecorder()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr))
-	prev := otel.GetTracerProvider()
-	otel.SetTracerProvider(tp)
-	t.Cleanup(func() { otel.SetTracerProvider(prev) })
 
 	ctx := context.Background()
-	fs, err := objstore.NewFS(t.TempDir())
+	fs, err := objstore.NewFS(t.TempDir(), obs.Providers{TracerProvider: tp})
 	require.NoError(t, err)
 
 	require.NoError(t, fs.Put(ctx, "abcd-key", bytes.NewBufferString("payload"), 7, teled.PutOptions{}))

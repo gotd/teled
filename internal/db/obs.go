@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
@@ -17,23 +16,28 @@ import (
 
 const instrumentationName = "github.com/gotd/teled/internal/db"
 
-var (
-	tracer = otel.Tracer(instrumentationName)
-	meter  = otel.Meter(instrumentationName)
-
+// queryTracer implements pgx.QueryTracer to open a span and record metrics for
+// every query executed through the pool, covering all DB methods at once. It
+// carries the tracer and instruments built from the providers passed to Open.
+type queryTracer struct {
+	tracer trace.Tracer
 	// queryDuration records database query latency in seconds, labeled by the
 	// SQL operation (SELECT, INSERT, ...). A histogram also carries the count.
-	queryDuration = obs.Must(meter.Float64Histogram("teled.db.query.duration",
-		metric.WithDescription("Duration of database queries."),
-		metric.WithUnit("s"),
-	))
-)
-
-// queryTracer implements pgx.QueryTracer to open a span and record metrics for
-// every query executed through the pool, covering all DB methods at once.
-type queryTracer struct{}
+	queryDuration metric.Float64Histogram
+}
 
 var _ pgx.QueryTracer = queryTracer{}
+
+func newQueryTracer(p obs.Providers) queryTracer {
+	return queryTracer{
+		tracer: p.Tracer(instrumentationName),
+		queryDuration: obs.Must(p.Meter(instrumentationName).Float64Histogram(
+			"teled.db.query.duration",
+			metric.WithDescription("Duration of database queries."),
+			metric.WithUnit("s"),
+		)),
+	}
+}
 
 type queryTraceKey struct{}
 
@@ -44,9 +48,9 @@ type queryTraceData struct {
 }
 
 // TraceQueryStart starts a client span for the query.
-func (queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+func (t queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
 	op := sqlOperation(data.SQL)
-	ctx, span := tracer.Start(ctx, "db.query "+op, trace.WithSpanKind(trace.SpanKindClient))
+	ctx, span := t.tracer.Start(ctx, "db.query "+op, trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(
 		attribute.String("db.system", "postgresql"),
 		attribute.String("db.operation", op),
@@ -56,7 +60,7 @@ func (queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.Tr
 }
 
 // TraceQueryEnd ends the span and records the query duration metric.
-func (queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
+func (t queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
 	d, ok := ctx.Value(queryTraceKey{}).(*queryTraceData)
 	if !ok {
 		return
@@ -66,7 +70,7 @@ func (queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 		d.span.SetStatus(codes.Error, data.Err.Error())
 	}
 	d.span.End()
-	queryDuration.Record(ctx, time.Since(d.start).Seconds(),
+	t.queryDuration.Record(ctx, time.Since(d.start).Seconds(),
 		metric.WithAttributes(attribute.String("db.operation", d.op)))
 }
 
