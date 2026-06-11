@@ -10,9 +10,10 @@ import (
 
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/tg"
-	"github.com/gotd/td/tgtest"
 
 	"go.uber.org/zap"
+
+	"github.com/gotd/teled/internal/mtproto"
 )
 
 // application holds application state.
@@ -34,7 +35,7 @@ type (
 	keySrv struct{}
 )
 
-func (a *application) OnMessage(server *tgtest.Server, req *tgtest.Request) error {
+func (a *application) OnMessage(server *mtproto.Server, req *mtproto.Request) error {
 	ctx := context.WithValue(req.RequestCtx, keyReq{}, req)
 	ctx = context.WithValue(ctx, keySrv{}, server)
 	e, err := a.d.Handle(ctx, req.Buf)

@@ -10,11 +10,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/gotd/td/tg"
-
-	"github.com/gotd/td/tgtest"
 	"github.com/gotd/td/transport"
 
 	"github.com/gotd/teled/internal/key"
+	"github.com/gotd/teled/internal/mtproto"
 )
 
 func newRoot(a *application) *cobra.Command {
@@ -43,7 +42,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			if err != nil {
 				return errors.Wrap(err, "failed to listen")
 			}
-			opt := tgtest.ServerOptions{
+			opt := mtproto.ServerOptions{
 				DC:     1,
 				Logger: a.lg,
 			}
@@ -51,7 +50,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.String("addr", a.Addr()),
 				zap.Int("dc", opt.DC),
 			)
-			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), tgtest.UnpackInvoke(a), opt)
+			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(a), opt)
 			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
 	}
