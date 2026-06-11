@@ -16,34 +16,34 @@ import (
 // setupStorage initializes persistence and returns the auth-key store plus a
 // cleanup function. With no --postgres-uri it falls back to in-memory keys so
 // the server is runnable standalone (keys are then lost on restart).
-func (a *application) setupStorage(ctx context.Context) (mtproto.KeyStorage, func(), error) {
+func (a *application) setupStorage(ctx context.Context) (mtproto.KeyStorage, *db.DB, func(), error) {
 	if a.PostgresURI == "" {
 		a.lg.Warn("No --postgres-uri set; auth keys are kept in memory and lost on restart")
-		return mtproto.NewInMemoryKeys(), func() {}, nil
+		return mtproto.NewInMemoryKeys(), nil, func() {}, nil
 	}
 
 	if err := db.Migrate(a.PostgresURI); err != nil {
-		return nil, nil, errors.Wrap(err, "migrate")
+		return nil, nil, nil, errors.Wrap(err, "migrate")
 	}
 
 	pool, err := db.Open(ctx, a.PostgresURI)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "open database")
+		return nil, nil, nil, errors.Wrap(err, "open database")
 	}
 
 	if err := queue.Migrate(ctx, pool); err != nil {
 		pool.Close()
-		return nil, nil, errors.Wrap(err, "migrate queue")
+		return nil, nil, nil, errors.Wrap(err, "migrate queue")
 	}
 
 	q, err := queue.New(pool, river.NewWorkers())
 	if err != nil {
 		pool.Close()
-		return nil, nil, errors.Wrap(err, "new queue")
+		return nil, nil, nil, errors.Wrap(err, "new queue")
 	}
 	if err := q.Start(ctx); err != nil {
 		pool.Close()
-		return nil, nil, errors.Wrap(err, "start queue")
+		return nil, nil, nil, errors.Wrap(err, "start queue")
 	}
 
 	cleanup := func() {
@@ -56,5 +56,5 @@ func (a *application) setupStorage(ctx context.Context) (mtproto.KeyStorage, fun
 	}
 
 	a.lg.Info("Connected to PostgreSQL")
-	return db.NewKeyStore(pool), cleanup, nil
+	return db.NewKeyStore(pool), db.New(pool), cleanup, nil
 }

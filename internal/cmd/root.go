@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/gotd/td/tg"
 	"github.com/gotd/td/transport"
 
 	"github.com/gotd/teled/internal/key"
 	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/rpc"
 )
 
 func newRoot(a *application) *cobra.Command {
@@ -37,7 +37,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				return errors.Wrap(err, "failed to parse private key")
 			}
 
-			keys, cleanup, err := a.setupStorage(ctx)
+			keys, database, cleanup, err := a.setupStorage(ctx)
 			if err != nil {
 				return errors.Wrap(err, "setup storage")
 			}
@@ -48,8 +48,9 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			if err != nil {
 				return errors.Wrap(err, "failed to listen")
 			}
+			const dc = 1
 			opt := mtproto.ServerOptions{
-				DC:     1,
+				DC:     dc,
 				Logger: a.lg,
 				Keys:   keys,
 			}
@@ -57,7 +58,8 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				zap.String("addr", a.Addr()),
 				zap.Int("dc", opt.DC),
 			)
-			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(a), opt)
+			handler := rpc.New(a.lg, database, dc, a.Host, a.Port)
+			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
 			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
 	}
@@ -90,7 +92,6 @@ func Execute() {
 	a := &application{
 		lg: lg,
 	}
-	a.setDispatcher(tg.NewServerDispatcher(a.Fallback))
 	if err := newRoot(a).Execute(); err != nil {
 		panic(err)
 	}

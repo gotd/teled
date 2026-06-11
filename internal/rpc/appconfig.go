@@ -1,4 +1,4 @@
-package cmd
+package rpc
 
 const defaultAppConfig = `{
     "test": 1,
