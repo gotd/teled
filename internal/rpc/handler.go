@@ -3,8 +3,12 @@ package rpc
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-faster/errors"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 
 	"github.com/gotd/td/bin"
@@ -50,6 +54,19 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	ctx := context.WithValue(req.RequestCtx, keyReq{}, req)
 	ctx = context.WithValue(ctx, keySrv{}, server)
 
+	// Resolve the RPC method name from the request type id for span naming and
+	// metric labeling.
+	method := "unknown"
+	if id, err := req.Buf.PeekID(); err == nil {
+		if name := tg.TypesMap()[id]; name != "" {
+			method = name
+		}
+	}
+
+	ctx, span := tracer.Start(ctx, method)
+	defer span.End()
+	start := time.Now()
+
 	// Register the session for push if it belongs to a logged-in user.
 	if h.db != nil {
 		if userID, ok, err := h.db.SessionUserID(ctx, req.Session.AuthKey.ID); err == nil && ok {
@@ -58,6 +75,20 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	}
 
 	e, err := h.dispatcher.Handle(ctx, req.Buf)
+
+	status := "ok"
+	if err != nil {
+		status = "error"
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	rpcDuration.Record(ctx, time.Since(start).Seconds(),
+		metric.WithAttributes(attribute.String("rpc.method", method)))
+	rpcRequests.Add(ctx, 1, metric.WithAttributes(
+		attribute.String("rpc.method", method),
+		attribute.String("rpc.status", status),
+	))
+
 	if err != nil {
 		return errors.Wrap(err, "handle")
 	}

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 
 	"github.com/go-faster/errors"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -16,8 +18,20 @@ import (
 	"github.com/gotd/td/transport"
 )
 
-// rpcHandle decrypts an incoming encrypted message and dispatches it.
-func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer) error {
+// rpcHandle decrypts an incoming encrypted message and dispatches it. It opens
+// the root span for the request: there is no inbound trace context in the
+// MTProto protocol, so each encrypted message starts a new trace.
+func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer) (rerr error) {
+	ctx, span := tracer.Start(ctx, "mtproto.handle", trace.WithSpanKind(trace.SpanKindServer))
+	defer func() {
+		if rerr != nil {
+			span.RecordError(rerr)
+			span.SetStatus(codes.Error, rerr.Error())
+		}
+		span.End()
+	}()
+	messages.Add(ctx, 1)
+
 	m := &crypto.EncryptedMessage{}
 	if err := m.DecodeWithoutCopy(b); err != nil {
 		return errors.Wrap(err, "decode encrypted message")

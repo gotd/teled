@@ -39,7 +39,10 @@ func (s *FS) path(key string) string {
 }
 
 // Put implements teled.ObjectStore. It writes atomically via a temp file.
-func (s *FS) Put(_ context.Context, key string, r io.Reader, _ int64, _ teled.PutOptions) error {
+func (s *FS) Put(ctx context.Context, key string, r io.Reader, _ int64, _ teled.PutOptions) (rerr error) {
+	done := observe(ctx, "put")
+	defer func() { done(rerr) }()
+
 	dst := s.path(key)
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return errors.Wrap(err, "mkdir")
@@ -68,7 +71,10 @@ func (s *FS) Put(_ context.Context, key string, r io.Reader, _ int64, _ teled.Pu
 }
 
 // Get implements teled.ObjectStore.
-func (s *FS) Get(_ context.Context, key string) (io.ReadCloser, error) {
+func (s *FS) Get(ctx context.Context, key string) (_ io.ReadCloser, rerr error) {
+	done := observe(ctx, "get")
+	defer func() { done(rerr) }()
+
 	f, err := os.Open(s.path(key))
 	if err != nil {
 		return nil, errors.Wrap(err, "open")
@@ -77,7 +83,10 @@ func (s *FS) Get(_ context.Context, key string) (io.ReadCloser, error) {
 }
 
 // GetRange implements teled.ObjectStore, returning length bytes from offset.
-func (s *FS) GetRange(_ context.Context, key string, offset, length int64) (io.ReadCloser, error) {
+func (s *FS) GetRange(ctx context.Context, key string, offset, length int64) (_ io.ReadCloser, rerr error) {
+	done := observe(ctx, "get_range")
+	defer func() { done(rerr) }()
+
 	f, err := os.Open(s.path(key))
 	if err != nil {
 		return nil, errors.Wrap(err, "open")
@@ -90,7 +99,10 @@ func (s *FS) GetRange(_ context.Context, key string, offset, length int64) (io.R
 }
 
 // Stat implements teled.ObjectStore.
-func (s *FS) Stat(_ context.Context, key string) (teled.ObjectInfo, error) {
+func (s *FS) Stat(ctx context.Context, key string) (_ teled.ObjectInfo, rerr error) {
+	done := observe(ctx, "stat")
+	defer func() { done(rerr) }()
+
 	fi, err := os.Stat(s.path(key))
 	if err != nil {
 		return teled.ObjectInfo{}, errors.Wrap(err, "stat")
@@ -99,7 +111,10 @@ func (s *FS) Stat(_ context.Context, key string) (teled.ObjectInfo, error) {
 }
 
 // Delete implements teled.ObjectStore. A missing object is not an error.
-func (s *FS) Delete(_ context.Context, key string) error {
+func (s *FS) Delete(ctx context.Context, key string) (rerr error) {
+	done := observe(ctx, "delete")
+	defer func() { done(rerr) }()
+
 	if err := os.Remove(s.path(key)); err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "remove")
 	}
