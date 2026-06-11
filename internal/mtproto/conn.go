@@ -36,7 +36,9 @@ func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code i
 // serveConn serves a single client connection until it is closed.
 func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 	s.log.Debug("Client connected")
+	activeConns.Add(ctx, 1)
 	defer func() {
+		activeConns.Add(ctx, -1)
 		s.registry.removeConn(conn)
 		_ = conn.Close()
 		s.log.Debug("Client disconnected")

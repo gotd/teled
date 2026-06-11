@@ -18,6 +18,9 @@ func Open(ctx context.Context, uri string) (*pgxpool.Pool, error) {
 	cfg.MinConns = 0
 	cfg.MaxConnLifetime = 2 * time.Minute
 
+	// Trace every query and record query metrics.
+	cfg.ConnConfig.Tracer = queryTracer{}
+
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "new pool")
