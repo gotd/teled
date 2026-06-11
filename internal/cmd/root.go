@@ -30,45 +30,15 @@ Not affiliated with official Telegram.
 Apache License 2.0, The GoTD Authors. 
 Based on https://gotd.dev Telegram protocol implementation.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			privateKeyEncoded, err := os.ReadFile(a.PrivateKeyPath)
-			if err != nil {
-				return errors.Wrap(err, "failed to read private key")
-			}
-			k, err := key.ParsePrivateKey(privateKeyEncoded)
-			if err != nil {
-				return errors.Wrap(err, "failed to parse private key")
-			}
-
-			keys, database, cleanup, err := a.setupStorage(ctx)
-			if err != nil {
-				return errors.Wrap(err, "setup storage")
-			}
-			defer cleanup()
-
-			var lc net.ListenConfig
-			ln, err := lc.Listen(ctx, "tcp", a.Addr())
-			if err != nil {
-				return errors.Wrap(err, "failed to listen")
-			}
-			store, err := objstore.NewFS(a.ObjectStoreDir)
-			if err != nil {
-				return errors.Wrap(err, "object store")
-			}
-
-			const dc = 1
-			opt := mtproto.ServerOptions{
-				DC:     dc,
-				Logger: a.lg,
-				Keys:   keys,
-			}
-			a.lg.Info("Listening",
-				zap.String("addr", a.Addr()),
-				zap.Int("dc", opt.DC),
-			)
-			handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port)
-			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
-			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
+			// Only the long-running server uses go-faster/sdk app.Run, which
+			// sets up telemetry and graceful shutdown. CLI subcommands (e.g.
+			// keys) run without it. app.Run terminates the process itself.
+			setTelemetryDefaults()
+			app.Run(func(ctx context.Context, lg *zap.Logger, _ *app.Telemetry) error {
+				a.lg = lg
+				return a.serve(ctx)
+			})
+			return nil
 		},
 	}
 
@@ -92,11 +62,52 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 	return rootCmd
 }
 
-// Execute executes root command.
-func Execute() {
-	// Telemetry is opt-in: default OTEL exporters to no-op unless the operator
-	// explicitly configures them, so the CLI does not block trying to reach a
-	// collector that is not there.
+// serve runs the Telegram server until ctx is canceled.
+func (a *application) serve(ctx context.Context) error {
+	privateKeyEncoded, err := os.ReadFile(a.PrivateKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read private key")
+	}
+	k, err := key.ParsePrivateKey(privateKeyEncoded)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse private key")
+	}
+
+	keys, database, cleanup, err := a.setupStorage(ctx)
+	if err != nil {
+		return errors.Wrap(err, "setup storage")
+	}
+	defer cleanup()
+
+	var lc net.ListenConfig
+	ln, err := lc.Listen(ctx, "tcp", a.Addr())
+	if err != nil {
+		return errors.Wrap(err, "failed to listen")
+	}
+	store, err := objstore.NewFS(a.ObjectStoreDir)
+	if err != nil {
+		return errors.Wrap(err, "object store")
+	}
+
+	const dc = 1
+	opt := mtproto.ServerOptions{
+		DC:     dc,
+		Logger: a.lg,
+		Keys:   keys,
+	}
+	a.lg.Info("Listening",
+		zap.String("addr", a.Addr()),
+		zap.Int("dc", opt.DC),
+	)
+	handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port)
+	srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
+	return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
+}
+
+// setTelemetryDefaults makes telemetry opt-in by defaulting the OTEL exporters
+// to no-op unless the operator explicitly configures them, so the server does
+// not block trying to reach a collector that is not there.
+func setTelemetryDefaults() {
 	for _, env := range []string{
 		"OTEL_METRICS_EXPORTER",
 		"OTEL_TRACES_EXPORTER",
@@ -106,11 +117,11 @@ func Execute() {
 			_ = os.Setenv(env, "none")
 		}
 	}
+}
 
-	app.Run(func(ctx context.Context, lg *zap.Logger, _ *app.Telemetry) error {
-		a := &application{
-			lg: lg,
-		}
-		return newRoot(a).ExecuteContext(ctx)
-	})
+// Execute executes root command.
+func Execute() {
+	if err := newRoot(&application{}).Execute(); err != nil {
+		os.Exit(1)
+	}
 }
