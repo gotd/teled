@@ -44,3 +44,24 @@ nfpms:
       - apk
       - deb
       - rpm
+    contents:
+      - src: ./init/teled.service
+        dst: /usr/lib/systemd/system/teled.service
+      - src: ./init/teled.env
+        dst: /etc/teled/teled.env
+        type: "config|noreplace"
+        file_info:
+          mode: 0640
+          owner: root
+          group: teled
+      - dst: /var/lib/teled
+        type: dir
+        file_info:
+          mode: 0750
+          owner: teled
+          group: teled
+    scripts:
+      preinstall: ./scripts/preinstall.sh
+      postinstall: ./scripts/postinstall.sh
+      preremove: ./scripts/preremove.sh
+      postremove: ./scripts/postremove.sh
