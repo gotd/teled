@@ -24,6 +24,7 @@ type application struct {
 	Host           string
 	Port           int
 	PrivateKeyPath string
+	PostgresURI    string
 }
 
 func (a application) Addr() string {

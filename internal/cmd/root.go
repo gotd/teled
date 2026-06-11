@@ -37,6 +37,12 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				return errors.Wrap(err, "failed to parse private key")
 			}
 
+			keys, cleanup, err := a.setupStorage(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setup storage")
+			}
+			defer cleanup()
+
 			var lc net.ListenConfig
 			ln, err := lc.Listen(ctx, "tcp", a.Addr())
 			if err != nil {
@@ -45,6 +51,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			opt := mtproto.ServerOptions{
 				DC:     1,
 				Logger: a.lg,
+				Keys:   keys,
 			}
 			a.lg.Info("Listening",
 				zap.String("addr", a.Addr()),
@@ -60,6 +67,8 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 		f.StringVar(&a.Host, "host", "localhost", "Hostname of the server")
 		f.IntVar(&a.Port, "port", 10443, "Port of the server")
 		f.StringVar(&a.PrivateKeyPath, "key", "", "Path to PEM-encoded private key")
+		f.StringVar(&a.PostgresURI, "postgres-uri", os.Getenv("DATABASE_URL"),
+			"PostgreSQL DSN (postgres://...); if empty, auth keys are kept in memory")
 
 		markFlagsRequired(f, "key")
 	}
