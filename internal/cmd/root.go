@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/gotd/td/tg"
-
-	"github.com/gotd/td/tgtest"
 	"github.com/gotd/td/transport"
 
 	"github.com/gotd/teled/internal/key"
+	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/objstore"
+	"github.com/gotd/teled/internal/rpc"
 )
 
 func newRoot(a *application) *cobra.Command {
@@ -38,20 +38,34 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				return errors.Wrap(err, "failed to parse private key")
 			}
 
+			keys, database, cleanup, err := a.setupStorage(ctx)
+			if err != nil {
+				return errors.Wrap(err, "setup storage")
+			}
+			defer cleanup()
+
 			var lc net.ListenConfig
 			ln, err := lc.Listen(ctx, "tcp", a.Addr())
 			if err != nil {
 				return errors.Wrap(err, "failed to listen")
 			}
-			opt := tgtest.ServerOptions{
-				DC:     1,
+			store, err := objstore.NewFS(a.ObjectStoreDir)
+			if err != nil {
+				return errors.Wrap(err, "object store")
+			}
+
+			const dc = 1
+			opt := mtproto.ServerOptions{
+				DC:     dc,
 				Logger: a.lg,
+				Keys:   keys,
 			}
 			a.lg.Info("Listening",
 				zap.String("addr", a.Addr()),
 				zap.Int("dc", opt.DC),
 			)
-			srv := tgtest.NewServer(tgtest.NewPrivateKey(k), tgtest.UnpackInvoke(a), opt)
+			handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port)
+			srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
 			return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 		},
 	}
@@ -61,6 +75,10 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 		f.StringVar(&a.Host, "host", "localhost", "Hostname of the server")
 		f.IntVar(&a.Port, "port", 10443, "Port of the server")
 		f.StringVar(&a.PrivateKeyPath, "key", "", "Path to PEM-encoded private key")
+		f.StringVar(&a.PostgresURI, "postgres-uri", os.Getenv("DATABASE_URL"),
+			"PostgreSQL DSN (postgres://...); if empty, auth keys are kept in memory")
+		f.StringVar(&a.ObjectStoreDir, "object-store-dir", "./objects",
+			"Local filesystem directory for media object storage")
 
 		markFlagsRequired(f, "key")
 	}
@@ -82,7 +100,6 @@ func Execute() {
 	a := &application{
 		lg: lg,
 	}
-	a.setDispatcher(tg.NewServerDispatcher(a.Fallback))
 	if err := newRoot(a).Execute(); err != nil {
 		panic(err)
 	}
