@@ -37,6 +37,7 @@ func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code i
 func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 	s.log.Debug("Client connected")
 	defer func() {
+		s.registry.removeConn(conn)
 		_ = conn.Close()
 		s.log.Debug("Client disconnected")
 	}()

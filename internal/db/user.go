@@ -121,5 +121,8 @@ func (db *DB) UsersByIDs(ctx context.Context, ids []int64) ([]teled.User, error)
 		}
 		users = append(users, u)
 	}
-	return users, gerrors.Wrap(rows.Err(), "rows")
+	if err := rows.Err(); err != nil {
+		return nil, gerrors.Wrap(err, "rows")
+	}
+	return users, nil
 }

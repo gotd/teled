@@ -94,10 +94,6 @@ func (h *Handler) authBindTempAuthKey(context.Context, *tg.AuthBindTempAuthKeyRe
 	return true, nil
 }
 
-func (h *Handler) contactsResolveUsername(context.Context, *tg.ContactsResolveUsernameRequest) (*tg.ContactsResolvedPeer, error) {
-	return nil, errors.New("not implemented")
-}
-
 func (h *Handler) contactsGetContacts(context.Context, int64) (tg.ContactsContactsClass, error) {
 	return &tg.ContactsContacts{}, nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
 
+	"github.com/gotd/teled"
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
 )
@@ -23,13 +24,14 @@ type Handler struct {
 	host string
 	port int
 
+	sessions   *sessionRegistry
 	dispatcher *tg.ServerDispatcher
 }
 
 // New builds a Handler and registers all supported RPCs. database may be nil,
 // in which case storage-backed RPCs return an error.
 func New(lg *zap.Logger, database *db.DB, dc int, host string, port int) *Handler {
-	h := &Handler{lg: lg, db: database, dc: dc, host: host, port: port}
+	h := &Handler{lg: lg, db: database, dc: dc, host: host, port: port, sessions: newSessionRegistry()}
 	d := tg.NewServerDispatcher(h.fallback)
 	h.register(d)
 	h.dispatcher = d
@@ -42,6 +44,13 @@ func New(lg *zap.Logger, database *db.DB, dc int, host string, port int) *Handle
 func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error {
 	ctx := context.WithValue(req.RequestCtx, keyReq{}, req)
 	ctx = context.WithValue(ctx, keySrv{}, server)
+
+	// Register the session for push if it belongs to a logged-in user.
+	if h.db != nil {
+		if userID, ok, err := h.db.SessionUserID(ctx, req.Session.AuthKey.ID); err == nil && ok {
+			h.sessions.track(userID, req.Session)
+		}
+	}
 
 	e, err := h.dispatcher.Handle(ctx, req.Buf)
 	if err != nil {
@@ -82,6 +91,11 @@ func requestFrom(ctx context.Context) *mtproto.Request {
 	return r
 }
 
+func serverFrom(ctx context.Context) *mtproto.Server {
+	s, _ := ctx.Value(keySrv{}).(*mtproto.Server)
+	return s
+}
+
 // callerKeyID returns the auth-key id of the session that issued the request.
 func callerKeyID(ctx context.Context) ([8]byte, bool) {
 	r := requestFrom(ctx)
@@ -89,4 +103,20 @@ func callerKeyID(ctx context.Context) ([8]byte, bool) {
 		return [8]byte{}, false
 	}
 	return r.Session.AuthKey.ID, true
+}
+
+// requireCaller returns the logged-in user for the request, or an
+// AUTH_KEY_UNREGISTERED error when the session is not authenticated.
+func (h *Handler) requireCaller(ctx context.Context) (teled.User, error) {
+	if err := h.requireDB(); err != nil {
+		return teled.User{}, err
+	}
+	u, ok, err := h.callerUser(ctx)
+	if err != nil {
+		return teled.User{}, h.internal("caller", err)
+	}
+	if !ok {
+		return teled.User{}, tgerr.New(401, "AUTH_KEY_UNREGISTERED")
+	}
+	return u, nil
 }

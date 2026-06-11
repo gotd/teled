@@ -35,7 +35,9 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnAccountGetNotifySettings(h.accountGetNotifySettings)
 	d.OnAccountGetGlobalPrivacySettings(h.accountGetGlobalPrivacySettings)
 
-	// Messages (stubs until M3).
+	// Messages.
+	d.OnMessagesSendMessage(h.messagesSendMessage)
+	d.OnMessagesGetHistory(h.messagesGetHistory)
 	d.OnMessagesGetDialogFilters(h.messagesGetDialogFilters)
 	d.OnMessagesGetAvailableReactions(h.messagesGetAvailableReactions)
 	d.OnMessagesGetStickerSet(h.messagesGetStickerSet)

@@ -82,13 +82,27 @@ func (r *registry) createConnection(key int64, conn transport.Conn) *connection 
 	r.connsMux.Lock()
 	defer r.connsMux.Unlock()
 
-	if v, ok := r.conns[key]; ok {
+	// Reuse only if the same transport still backs the session; a reconnect on a
+	// new transport replaces the stale entry (and re-sends new_session_created).
+	if v, ok := r.conns[key]; ok && v.Conn == conn {
 		return v
 	}
 
 	c := &connection{Conn: conn}
 	r.conns[key] = c
 	return c
+}
+
+// removeConn drops all session entries backed by conn (called on disconnect) so
+// the server never pushes to a dead socket.
+func (r *registry) removeConn(conn transport.Conn) {
+	r.connsMux.Lock()
+	for id, c := range r.conns {
+		if c.Conn == conn {
+			delete(r.conns, id)
+		}
+	}
+	r.connsMux.Unlock()
 }
 
 func (r *registry) getConnection(key int64) (*connection, bool) {

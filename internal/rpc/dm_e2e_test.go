@@ -1,0 +1,157 @@
+package rpc
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"net"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
+
+	"github.com/gotd/td/crypto"
+	"github.com/gotd/td/session"
+	"github.com/gotd/td/tdsync"
+	"github.com/gotd/td/telegram"
+	"github.com/gotd/td/telegram/dcs"
+	"github.com/gotd/td/tg"
+	"github.com/gotd/td/transport"
+
+	"github.com/gotd/teled/internal/db"
+	"github.com/gotd/teled/internal/mtproto"
+	"github.com/gotd/teled/internal/pgtest"
+)
+
+// testEnv is a running server a test client can connect to.
+type testEnv struct {
+	dc   int
+	addr *net.TCPAddr
+	key  []telegram.PublicKey
+	db   *db.DB
+}
+
+func newTestEnv(t *testing.T, ctx context.Context, g *tdsync.CancellableGroup) *testEnv {
+	t.Helper()
+	const dcID = 2
+	log := zaptest.NewLogger(t)
+
+	dsn := pgtest.New(t)
+	require.NoError(t, db.Migrate(dsn))
+	pool, err := db.Open(ctx, dsn)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	database := db.New(pool)
+
+	rsaKey, err := rsa.GenerateKey(rand.Reader, crypto.RSAKeyBits)
+	require.NoError(t, err)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := ln.Addr().(*net.TCPAddr)
+
+	handler := New(log.Named("rpc"), database, dcID, addr.IP.String(), addr.Port)
+	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
+		DC:     dcID,
+		Keys:   db.NewKeyStore(pool),
+		Logger: log.Named("server"),
+	})
+	g.Go(func(ctx context.Context) error { return srv.Serve(ctx, transport.ListenCodec(nil, ln)) })
+
+	return &testEnv{dc: dcID, addr: addr, key: []telegram.PublicKey{srv.Key()}, db: database}
+}
+
+// runClient connects a client backed by storage and invokes fn with the API.
+func (e *testEnv) runClient(ctx context.Context, t *testing.T, storage session.Storage, fn func(api *tg.Client)) {
+	t.Helper()
+	client := telegram.NewClient(telegram.TestAppID, telegram.TestAppHash, telegram.Options{
+		PublicKeys:     e.key,
+		DC:             e.dc,
+		DCList:         dcs.List{Options: []tg.DCOption{{ID: e.dc, IPAddress: e.addr.IP.String(), Port: e.addr.Port}}},
+		Resolver:       dcs.Plain(dcs.PlainOptions{}),
+		NoUpdates:      true,
+		Logger:         zaptest.NewLogger(t).Named("client"),
+		SessionStorage: storage,
+		RetryInterval:  100 * time.Millisecond,
+	})
+	require.NoError(t, client.Run(ctx, func(ctx context.Context) error {
+		fn(client.API())
+		return nil
+	}))
+}
+
+func signUp(ctx context.Context, t *testing.T, api *tg.Client, phone, first string) *tg.User {
+	t.Helper()
+	sent, err := api.AuthSendCode(ctx, &tg.AuthSendCodeRequest{
+		PhoneNumber: phone, APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, Settings: tg.CodeSettings{},
+	})
+	require.NoError(t, err)
+	code := sent.(*tg.AuthSentCode)
+	authResp, err := api.AuthSignUp(ctx, &tg.AuthSignUpRequest{
+		PhoneNumber: phone, PhoneCodeHash: code.PhoneCodeHash, FirstName: first,
+	})
+	require.NoError(t, err)
+	return authResp.(*tg.AuthAuthorization).User.(*tg.User)
+}
+
+func inputPeer(u *tg.User) *tg.InputPeerUser {
+	return &tg.InputPeerUser{UserID: u.ID, AccessHash: u.AccessHash}
+}
+
+// TestDMSendAndHistory verifies the per-account message model: A sends to B and
+// each side reads its own local view of the conversation.
+func TestDMSendAndHistory(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	storageA := &session.StorageMemory{}
+	storageB := &session.StorageMemory{}
+	var userA, userB *tg.User
+
+	// B signs up first so A can address it.
+	env.runClient(ctx, t, storageB, func(api *tg.Client) {
+		userB = signUp(ctx, t, api, "+2222222222", "Bob")
+	})
+
+	// A signs up and sends a message to B.
+	env.runClient(ctx, t, storageA, func(api *tg.Client) {
+		userA = signUp(ctx, t, api, "+1111111111", "Alice")
+
+		const randomID = 0x5151
+		updResp, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+			Peer: inputPeer(userB), Message: "hello bob", RandomID: randomID,
+		})
+		require.NoError(t, err)
+		upd := updResp.(*tg.Updates)
+		require.IsType(t, &tg.UpdateMessageID{}, upd.Updates[0])
+		require.Equal(t, int64(randomID), upd.Updates[0].(*tg.UpdateMessageID).RandomID)
+		nm := upd.Updates[1].(*tg.UpdateNewMessage).Message.(*tg.Message)
+		require.True(t, nm.Out)
+		require.Equal(t, "hello bob", nm.Message)
+
+		// A's own history shows the outgoing message.
+		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
+		require.NoError(t, err)
+		msgs := hist.(*tg.MessagesMessages).Messages
+		require.Len(t, msgs, 1)
+		require.True(t, msgs[0].(*tg.Message).Out)
+	})
+
+	// B reads its own (incoming) view of the conversation.
+	env.runClient(ctx, t, storageB, func(api *tg.Client) {
+		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userA), Limit: 10})
+		require.NoError(t, err)
+		msgs := hist.(*tg.MessagesMessages).Messages
+		require.Len(t, msgs, 1)
+		m := msgs[0].(*tg.Message)
+		require.False(t, m.Out)
+		require.Equal(t, "hello bob", m.Message)
+	})
+
+	g.Cancel()
+	if err := g.Wait(); err != nil {
+		require.ErrorIs(t, err, context.Canceled)
+	}
+}
