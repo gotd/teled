@@ -16,6 +16,7 @@ import (
 	"github.com/gotd/teled/internal/key"
 	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/objstore"
+	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/rpc"
 )
 
@@ -34,9 +35,12 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			// sets up telemetry and graceful shutdown. CLI subcommands (e.g.
 			// keys) run without it. app.Run terminates the process itself.
 			setTelemetryDefaults()
-			app.Run(func(ctx context.Context, lg *zap.Logger, _ *app.Telemetry) error {
+			app.Run(func(ctx context.Context, lg *zap.Logger, t *app.Telemetry) error {
 				a.lg = lg
-				return a.serve(ctx)
+				return a.serve(ctx, obs.Providers{
+					TracerProvider: t.TracerProvider(),
+					MeterProvider:  t.MeterProvider(),
+				})
 			})
 			return nil
 		},
@@ -62,8 +66,9 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 	return rootCmd
 }
 
-// serve runs the Telegram server until ctx is canceled.
-func (a *application) serve(ctx context.Context) error {
+// serve runs the Telegram server until ctx is canceled. providers carries the
+// OpenTelemetry tracer and meter threaded into every layer.
+func (a *application) serve(ctx context.Context, providers obs.Providers) error {
 	privateKeyEncoded, err := os.ReadFile(a.PrivateKeyPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to read private key")
@@ -73,7 +78,7 @@ func (a *application) serve(ctx context.Context) error {
 		return errors.Wrap(err, "failed to parse private key")
 	}
 
-	keys, database, cleanup, err := a.setupStorage(ctx)
+	keys, database, cleanup, err := a.setupStorage(ctx, providers)
 	if err != nil {
 		return errors.Wrap(err, "setup storage")
 	}
@@ -84,22 +89,23 @@ func (a *application) serve(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
 	}
-	store, err := objstore.NewFS(a.ObjectStoreDir)
+	store, err := objstore.NewFS(a.ObjectStoreDir, providers)
 	if err != nil {
 		return errors.Wrap(err, "object store")
 	}
 
 	const dc = 1
 	opt := mtproto.ServerOptions{
-		DC:     dc,
-		Logger: a.lg,
-		Keys:   keys,
+		DC:        dc,
+		Logger:    a.lg,
+		Keys:      keys,
+		Providers: providers,
 	}
 	a.lg.Info("Listening",
 		zap.String("addr", a.Addr()),
 		zap.Int("dc", opt.DC),
 	)
-	handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port)
+	handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port, providers)
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
 	return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
 }

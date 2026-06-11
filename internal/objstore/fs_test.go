@@ -11,11 +11,12 @@ import (
 
 	"github.com/gotd/teled"
 	"github.com/gotd/teled/internal/objstore"
+	"github.com/gotd/teled/internal/obs"
 )
 
 func TestFS(t *testing.T) {
 	ctx := context.Background()
-	fs, err := objstore.NewFS(t.TempDir())
+	fs, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
 
 	const key = "abcdef0123456789"

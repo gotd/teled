@@ -12,22 +12,25 @@ import (
 	"github.com/go-faster/errors"
 
 	"github.com/gotd/teled"
+	"github.com/gotd/teled/internal/obs"
 )
 
 // FS is a local-filesystem ObjectStore. Objects are stored under a base
 // directory, sharded by the first bytes of the key to avoid huge directories.
 type FS struct {
 	base string
+	obs  observability
 }
 
 var _ teled.ObjectStore = (*FS)(nil)
 
 // NewFS creates an FS rooted at base, creating the directory if needed.
-func NewFS(base string) (*FS, error) {
+// providers supplies the OpenTelemetry tracer and meter for this layer.
+func NewFS(base string, providers obs.Providers) (*FS, error) {
 	if err := os.MkdirAll(base, 0o750); err != nil {
 		return nil, errors.Wrap(err, "mkdir base")
 	}
-	return &FS{base: base}, nil
+	return &FS{base: base, obs: newObservability(providers)}, nil
 }
 
 // path maps a key to its on-disk location, sharded as base/ab/cd/<key>.
@@ -40,7 +43,7 @@ func (s *FS) path(key string) string {
 
 // Put implements teled.ObjectStore. It writes atomically via a temp file.
 func (s *FS) Put(ctx context.Context, key string, r io.Reader, _ int64, _ teled.PutOptions) (rerr error) {
-	done := observe(ctx, "put")
+	done := s.observe(ctx, "put")
 	defer func() { done(rerr) }()
 
 	dst := s.path(key)
@@ -72,7 +75,7 @@ func (s *FS) Put(ctx context.Context, key string, r io.Reader, _ int64, _ teled.
 
 // Get implements teled.ObjectStore.
 func (s *FS) Get(ctx context.Context, key string) (_ io.ReadCloser, rerr error) {
-	done := observe(ctx, "get")
+	done := s.observe(ctx, "get")
 	defer func() { done(rerr) }()
 
 	f, err := os.Open(s.path(key))
@@ -84,7 +87,7 @@ func (s *FS) Get(ctx context.Context, key string) (_ io.ReadCloser, rerr error) 
 
 // GetRange implements teled.ObjectStore, returning length bytes from offset.
 func (s *FS) GetRange(ctx context.Context, key string, offset, length int64) (_ io.ReadCloser, rerr error) {
-	done := observe(ctx, "get_range")
+	done := s.observe(ctx, "get_range")
 	defer func() { done(rerr) }()
 
 	f, err := os.Open(s.path(key))
@@ -100,7 +103,7 @@ func (s *FS) GetRange(ctx context.Context, key string, offset, length int64) (_ 
 
 // Stat implements teled.ObjectStore.
 func (s *FS) Stat(ctx context.Context, key string) (_ teled.ObjectInfo, rerr error) {
-	done := observe(ctx, "stat")
+	done := s.observe(ctx, "stat")
 	defer func() { done(rerr) }()
 
 	fi, err := os.Stat(s.path(key))
@@ -112,7 +115,7 @@ func (s *FS) Stat(ctx context.Context, key string) (_ teled.ObjectInfo, rerr err
 
 // Delete implements teled.ObjectStore. A missing object is not an error.
 func (s *FS) Delete(ctx context.Context, key string) (rerr error) {
-	done := observe(ctx, "delete")
+	done := s.observe(ctx, "delete")
 	defer func() { done(rerr) }()
 
 	if err := os.Remove(s.path(key)); err != nil && !os.IsNotExist(err) {

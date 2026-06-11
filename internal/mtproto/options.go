@@ -13,6 +13,8 @@ import (
 	"github.com/gotd/td/proto"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tmap"
+
+	"github.com/gotd/teled/internal/obs"
 )
 
 // ServerOptions configures a Server.
@@ -35,6 +37,9 @@ type ServerOptions struct {
 	ReadTimeout time.Duration
 	// WriteTimeout is the connection write timeout.
 	WriteTimeout time.Duration
+	// Providers supplies the OpenTelemetry tracer and meter for this layer.
+	// The zero value yields no-op instrumentation.
+	Providers obs.Providers
 }
 
 func (opt *ServerOptions) setDefaults() {

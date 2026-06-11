@@ -37,6 +37,7 @@ type Server struct {
 
 	types *tmap.Map
 	log   *zap.Logger
+	obs   observability
 }
 
 // NewPrivateKey creates a new private key from an RSA private key.
@@ -60,6 +61,7 @@ func NewServer(key exchange.PrivateKey, handler Handler, opts ServerOptions) *Se
 		registry:     newRegistry(opts.Keys),
 		types:        opts.Types,
 		log:          opts.Logger,
+		obs:          newObservability(opts.Providers),
 	}
 }
 

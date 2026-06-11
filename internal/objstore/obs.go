@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
@@ -15,23 +14,31 @@ import (
 
 const instrumentationName = "github.com/gotd/teled/internal/objstore"
 
-var (
-	tracer = otel.Tracer(instrumentationName)
-	meter  = otel.Meter(instrumentationName)
-
+// observability holds the tracer and metric instruments for the object store,
+// built from the providers passed to NewFS.
+type observability struct {
+	tracer trace.Tracer
 	// opDuration records object store operation latency in seconds, labeled by
 	// operation (put, get, ...).
-	opDuration = obs.Must(meter.Float64Histogram("teled.objstore.duration",
-		metric.WithDescription("Duration of object store operations."),
-		metric.WithUnit("s"),
-	))
-)
+	opDuration metric.Float64Histogram
+}
+
+func newObservability(p obs.Providers) observability {
+	return observability{
+		tracer: p.Tracer(instrumentationName),
+		opDuration: obs.Must(p.Meter(instrumentationName).Float64Histogram(
+			"teled.objstore.duration",
+			metric.WithDescription("Duration of object store operations."),
+			metric.WithUnit("s"),
+		)),
+	}
+}
 
 // observe starts a span for an object store operation and returns a function
 // that ends it and records the operation duration. Pass the operation's error
 // to the returned function so failures are recorded on the span.
-func observe(ctx context.Context, op string) func(error) {
-	ctx, span := tracer.Start(ctx, "objstore."+op, trace.WithSpanKind(trace.SpanKindClient))
+func (s *FS) observe(ctx context.Context, op string) func(error) {
+	ctx, span := s.obs.tracer.Start(ctx, "objstore."+op, trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(attribute.String("objstore.operation", op))
 	start := time.Now()
 	return func(err error) {
@@ -40,7 +47,7 @@ func observe(ctx context.Context, op string) func(error) {
 			span.SetStatus(codes.Error, err.Error())
 		}
 		span.End()
-		opDuration.Record(ctx, time.Since(start).Seconds(),
+		s.obs.opDuration.Record(ctx, time.Since(start).Seconds(),
 			metric.WithAttributes(attribute.String("objstore.operation", op)))
 	}
 }

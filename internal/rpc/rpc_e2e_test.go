@@ -22,6 +22,7 @@ import (
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/objstore"
+	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/pgtest"
 )
 
@@ -40,7 +41,7 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 
 	dsn := pgtest.New(t)
 	require.NoError(t, db.Migrate(dsn))
-	pool, err := db.Open(ctx, dsn)
+	pool, err := db.Open(ctx, dsn, obs.Providers{})
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 	database := db.New(pool)
@@ -51,9 +52,9 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 	require.NoError(t, err)
 	addr := ln.Addr().(*net.TCPAddr)
 
-	store, err := objstore.NewFS(t.TempDir())
+	store, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
-	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port)
+	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool), // Persisted: sessions.key_id FK -> auth_keys.
