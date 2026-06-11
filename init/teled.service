@@ -1,0 +1,25 @@
+[Unit]
+Description=teled — Telegram Server in Go
+Documentation=https://github.com/gotd/teled
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=teled
+Group=teled
+EnvironmentFile=/etc/teled/teled.env
+ExecStart=/usr/bin/teled --host ${TELED_HOST} --port ${TELED_PORT} --key ${TELED_KEY} --object-store-dir ${TELED_OBJECT_STORE_DIR}
+WorkingDirectory=/var/lib/teled
+Restart=on-failure
+RestartSec=5s
+
+# Hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/teled
+
+[Install]
+WantedBy=multi-user.target
