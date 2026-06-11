@@ -12,6 +12,8 @@ import (
 	"github.com/gotd/td/tg"
 )
 
+const countryName = "Kekistan"
+
 func (a *application) setDispatcher(d *tg.ServerDispatcher) {
 	d.OnHelpGetNearestDC(a.helpGetNearestDC)
 	d.OnHelpGetCountriesList(a.helpGetCountriesList)
@@ -58,7 +60,7 @@ func (a *application) helpGetNearestDC(ctx context.Context) (*tg.NearestDC, erro
 	return &tg.NearestDC{
 		ThisDC:    1,
 		NearestDC: 1,
-		Country:   "Kekistan",
+		Country:   countryName,
 	}, nil
 }
 
@@ -68,8 +70,8 @@ func (a *application) helpGetCountriesList(ctx context.Context, req *tg.HelpGetC
 		Countries: []tg.HelpCountry{
 			{
 				ISO2:        "AF",
-				Name:        "Kekistan",
-				DefaultName: "Kekistan",
+				Name:        countryName,
+				DefaultName: countryName,
 				CountryCodes: []tg.HelpCountryCode{
 					{
 						CountryCode: "1337",
@@ -240,7 +242,10 @@ func (a *application) messagesGetPeerDialogs(ctx context.Context, peers []tg.Inp
 	return &tg.MessagesPeerDialogs{}, nil
 }
 
-func (a *application) contactsResolveUsername(ctx context.Context, request *tg.ContactsResolveUsernameRequest) (*tg.ContactsResolvedPeer, error) {
+func (a *application) contactsResolveUsername(
+	ctx context.Context,
+	request *tg.ContactsResolveUsernameRequest,
+) (*tg.ContactsResolvedPeer, error) {
 	// Only tdhbcfiles is supported.
 	username := request.Username
 	a.lg.Debug("ContactsResolveUsername", zap.String("username", username))
