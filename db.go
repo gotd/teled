@@ -15,11 +15,21 @@ var ErrMessageID = errors.New("message id invalid")
 // Update log entry types. UpdateLogEntry.Type holds one of these, telling
 // consumers how to interpret the entry (and its Extra payload).
 const (
-	UpdateNew       = "new"       // a new message; GlobalID set, no Extra
-	UpdateEdit      = "edit"      // an edited message; GlobalID set, no Extra
-	UpdateDelete    = "delete"    // deleted messages; Extra carries local ids
-	UpdateReadInbox = "readinbox" // inbox read; Extra carries peer and max id
+	UpdateNew        = "new"        // a new message; GlobalID set, no Extra
+	UpdateEdit       = "edit"       // an edited message; GlobalID set, no Extra
+	UpdateDelete     = "delete"     // deleted messages; Extra carries local ids
+	UpdateReadInbox  = "readinbox"  // inbox read; Extra carries peer and max id
+	UpdateReadOutbox = "readoutbox" // a peer read the caller's messages; Extra carries peer and max id
 )
+
+// ReadResult is the outcome of ReadHistory: the caller's own inbox read plus the
+// read-receipt to push to the peer whose messages were read.
+type ReadResult struct {
+	InboxPts    int   // caller's pts for the inbox-read update
+	UnreadCount int   // caller's remaining unread incoming messages with this peer
+	OutboxPts   int   // peer's pts for the read-receipt update; 0 when nothing to ack
+	OutboxMaxID int64 // peer's max outgoing local id that was read; 0 when none
+}
 
 // EncodeDeleted encodes the local ids of a delete update into an UpdateLogEntry
 // Extra payload. DecodeDeleted is its inverse.
@@ -171,8 +181,9 @@ type DB interface {
 	// Drafts returns all of the caller's saved drafts, newest first.
 	Drafts(ctx context.Context, userID int64) ([]Draft, error)
 	// ReadHistory marks the caller's incoming messages from peer up to maxID as
-	// read and allocates a pts for the read event.
-	ReadHistory(ctx context.Context, self, peer, maxID int64) (pts int, err error)
+	// read, allocating a pts for the caller's inbox-read event and, when any of
+	// the peer's messages were read, a pts for the peer's read-receipt.
+	ReadHistory(ctx context.Context, self, peer, maxID int64) (ReadResult, error)
 
 	// GetState returns the caller's current update state.
 	GetState(ctx context.Context, self int64) (State, error)

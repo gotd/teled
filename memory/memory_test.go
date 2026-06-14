@@ -262,7 +262,7 @@ func TestDBDifference(t *testing.T) {
 	require.Equal(t, alice.ID, peer)
 	require.Equal(t, int64(1), maxID)
 
-	// Alice's log: new, edit, delete.
+	// Alice's log: new, readoutbox (Bob read her message), edit, delete.
 	entries, _, err = d.GetDifference(ctx, alice.ID, 0, 100)
 	require.NoError(t, err)
 
@@ -271,13 +271,17 @@ func TestDBDifference(t *testing.T) {
 		types = append(types, e.Type)
 	}
 
-	require.Equal(t, []string{teled.UpdateNew, teled.UpdateEdit, teled.UpdateDelete}, types)
-	require.Equal(t, []int64{sent.SenderLocalID}, teled.DecodeDeleted(entries[2].Extra))
+	require.Equal(t, []string{teled.UpdateNew, teled.UpdateReadOutbox, teled.UpdateEdit, teled.UpdateDelete}, types)
+
+	rPeer, rMax := teled.DecodeRead(entries[1].Extra)
+	require.Equal(t, bob.ID, rPeer) // the reader
+	require.Equal(t, sent.SenderLocalID, rMax)
+	require.Equal(t, []int64{sent.SenderLocalID}, teled.DecodeDeleted(entries[3].Extra))
 
 	// sincePts filters.
 	entries, _, err = d.GetDifference(ctx, alice.ID, entries[0].Pts, 100)
 	require.NoError(t, err)
-	require.Len(t, entries, 2)
+	require.Len(t, entries, 3)
 }
 
 func TestDBFilesAndMediaMessage(t *testing.T) {

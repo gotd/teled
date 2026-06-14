@@ -18,6 +18,7 @@ const (
 	updEditMessage = teled.UpdateEdit
 	updDelete      = teled.UpdateDelete
 	updReadInbox   = teled.UpdateReadInbox
+	updReadOutbox  = teled.UpdateReadOutbox
 )
 
 // allocate bumps the per-account local message id and common pts in one step,

@@ -79,7 +79,16 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 			peer, maxID := teled.DecodeRead(e.Extra)
 			userIDs[peer] = struct{}{}
 
-			otherUpdates = append(otherUpdates, &tg.UpdateReadHistoryInbox{
+			inbox := &tg.UpdateReadHistoryInbox{
+				Peer: &tg.PeerUser{UserID: peer}, MaxID: int(maxID), Pts: e.Pts, PtsCount: e.PtsCount,
+			}
+			inbox.SetFlags()
+			otherUpdates = append(otherUpdates, inbox)
+		case teled.UpdateReadOutbox:
+			peer, maxID := teled.DecodeRead(e.Extra)
+			userIDs[peer] = struct{}{}
+
+			otherUpdates = append(otherUpdates, &tg.UpdateReadHistoryOutbox{
 				Peer: &tg.PeerUser{UserID: peer}, MaxID: int(maxID), Pts: e.Pts, PtsCount: e.PtsCount,
 			})
 		}

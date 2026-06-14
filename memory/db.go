@@ -941,9 +941,11 @@ func (d *DB) GetDialogs(_ context.Context, self int64, limit int) ([]teled.Dialo
 
 // ReadHistory marks the caller's incoming messages from peer up to maxID as read
 // and allocates a pts for the read event.
-func (d *DB) ReadHistory(_ context.Context, self, peer, maxID int64) (int, error) {
+func (d *DB) ReadHistory(_ context.Context, self, peer, maxID int64) (teled.ReadResult, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	var readGlobals []int64
 
 	for _, r := range d.refs[self] {
 		if r.out || r.localID > maxID {
@@ -956,12 +958,43 @@ func (d *DB) ReadHistory(_ context.Context, self, peer, maxID int64) (int, error
 		}
 
 		r.unread = false
+		readGlobals = append(readGlobals, r.globalID)
 	}
 
-	pts := d.allocatePts(self, 1)
-	d.logUpdate(self, pts, 1, teled.UpdateReadInbox, nil, teled.EncodeRead(peer, maxID))
+	var res teled.ReadResult
 
-	return pts, nil
+	// Peer's max outgoing local id among the read messages, for the receipt.
+	readSet := make(map[int64]bool, len(readGlobals))
+	for _, g := range readGlobals {
+		readSet[g] = true
+	}
+
+	for _, pr := range d.refs[peer] {
+		if pr.out && readSet[pr.globalID] && pr.localID > res.OutboxMaxID {
+			res.OutboxMaxID = pr.localID
+		}
+	}
+
+	// Remaining unread incoming with this peer.
+	for _, r := range d.refs[self] {
+		if r.out || !r.unread {
+			continue
+		}
+
+		if m := d.messages[r.globalID]; m != nil && other(self, m) == peer {
+			res.UnreadCount++
+		}
+	}
+
+	res.InboxPts = d.allocatePts(self, 1)
+	d.logUpdate(self, res.InboxPts, 1, teled.UpdateReadInbox, nil, teled.EncodeRead(peer, maxID))
+
+	if res.OutboxMaxID > 0 && peer != self {
+		res.OutboxPts = d.allocatePts(peer, 1)
+		d.logUpdate(peer, res.OutboxPts, 1, teled.UpdateReadOutbox, nil, teled.EncodeRead(self, res.OutboxMaxID))
+	}
+
+	return res, nil
 }
 
 // --- updates -------------------------------------------------------------

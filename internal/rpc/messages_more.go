@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
@@ -124,12 +125,35 @@ func (h *Handler) messagesReadHistory(ctx context.Context, req *tg.MessagesReadH
 		return nil, err
 	}
 
-	pts, err := h.db.ReadHistory(ctx, caller.ID, peer.ID, int64(req.MaxID))
+	res, err := h.db.ReadHistory(ctx, caller.ID, peer.ID, int64(req.MaxID))
 	if err != nil {
 		return nil, h.internal(ctx, "read history", err)
 	}
 
-	return &tg.MessagesAffectedMessages{Pts: pts, PtsCount: 1}, nil
+	now := int(time.Now().Unix())
+
+	// Sync the read to the caller's other sessions so the unread badge clears
+	// everywhere.
+	inbox := &tg.UpdateReadHistoryInbox{
+		Peer: &tg.PeerUser{UserID: peer.ID}, MaxID: req.MaxID,
+		StillUnreadCount: res.UnreadCount, Pts: res.InboxPts, PtsCount: 1,
+	}
+	inbox.SetFlags()
+	h.push(ctx, caller.ID, []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)}, now, inbox)
+
+	// Read-receipt: tell the peer their messages were read (their "sent" ticks
+	// turn to "read").
+	if res.OutboxMaxID > 0 {
+		h.push(ctx, peer.ID,
+			[]tg.UserClass{h.tgUser(caller, false), h.tgUser(peer, true)}, now,
+			&tg.UpdateReadHistoryOutbox{
+				Peer: &tg.PeerUser{UserID: caller.ID}, MaxID: int(res.OutboxMaxID),
+				Pts: res.OutboxPts, PtsCount: 1,
+			},
+		)
+	}
+
+	return &tg.MessagesAffectedMessages{Pts: res.InboxPts, PtsCount: 1}, nil
 }
 
 // messagesEditMessage edits a message the caller sent.
