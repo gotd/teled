@@ -17,3 +17,7 @@ func (h *Handler) messagesGetAllStickers(context.Context, int64) (tg.MessagesAll
 func (h *Handler) messagesGetEmojiStickers(context.Context, int64) (tg.MessagesAllStickersClass, error) {
 	return &tg.MessagesAllStickersNotModified{}, nil
 }
+
+func (h *Handler) messagesGetFavedStickers(context.Context, int64) (tg.MessagesFavedStickersClass, error) {
+	return &tg.MessagesFavedStickersNotModified{}, nil
+}
