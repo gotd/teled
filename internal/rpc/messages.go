@@ -73,7 +73,10 @@ func (h *Handler) push(ctx context.Context, userID int64, users []tg.UserClass, 
 	wrap := &tg.Updates{Updates: updates, Users: users, Date: date}
 	for _, s := range sessions {
 		if err := server.Send(ctx, s, proto.MessageFromServer, wrap); err != nil {
-			log.For(h.lg).Debug(ctx, "push failed", log.Error(err))
+			// The connection is gone (client disconnected); drop the stale session
+			// so we stop pushing to it. It re-registers on the next request.
+			log.For(h.lg).Debug(ctx, "push failed; dropping dead session", log.Error(err))
+			h.sessions.untrack(userID, s.ID)
 		}
 	}
 }
