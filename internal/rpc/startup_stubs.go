@@ -92,7 +92,9 @@ func (h *Handler) accountGetThemes(context.Context, *tg.AccountGetThemesRequest)
 // Stories.
 
 func (h *Handler) storiesGetAllStories(context.Context, *tg.StoriesGetAllStoriesRequest) (tg.StoriesAllStoriesClass, error) {
-	return &tg.StoriesAllStoriesNotModified{}, nil
+	// Return a complete (empty) story list rather than "not modified": a client
+	// with no cached state that receives NotModified keeps polling forever.
+	return &tg.StoriesAllStories{State: "0"}, nil
 }
 
 // Dialogs / drafts / search / peers.
