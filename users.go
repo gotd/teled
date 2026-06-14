@@ -11,6 +11,7 @@ type User struct {
 	FirstName  string
 	LastName   string
 	About      string
-	IsBot      bool // true for bot accounts authenticated by token
+	IsBot      bool   // true for bot accounts authenticated by token
+	BotToken   string // bot auth token, empty for human accounts
 	CreatedAt  time.Time
 }

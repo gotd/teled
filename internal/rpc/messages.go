@@ -46,6 +46,12 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 
 	h.deliver(ctx, caller, peer, sent, req.Message)
 
+	// BotFather answers DMs to it inline: its replies are persisted and pushed
+	// before this RPC returns, so they are immediately visible in history.
+	if peer.ID == teled.BotFatherID {
+		h.handleBotFather(ctx, caller, peer, req.Message)
+	}
+
 	return &tg.Updates{
 		Updates: []tg.UpdateClass{
 			&tg.UpdateMessageID{ID: int(sent.SenderLocalID), RandomID: req.RandomID},
