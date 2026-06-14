@@ -39,6 +39,7 @@ type DB struct {
 	fileSeq int64
 
 	sessions   map[[8]byte]int64
+	tempKeys   map[[8]byte]memTempKey
 	phoneCodes map[string]memPhoneCode
 	botStates  map[int64]teled.BotFatherState
 	// botCommands is keyed by botID|scope|lang; a present (possibly empty) value
@@ -81,6 +82,11 @@ type memPhoneCode struct {
 	expiresAt time.Time
 }
 
+type memTempKey struct {
+	perm      [8]byte
+	expiresAt time.Time
+}
+
 var _ teled.DB = (*DB)(nil)
 
 // NewDB creates an empty in-memory database with the built-in BotFather account
@@ -93,6 +99,7 @@ func NewDB() *DB {
 		updates:     make(map[int64][]teled.UpdateLogEntry),
 		files:       make(map[int64]*teled.File),
 		sessions:    make(map[[8]byte]int64),
+		tempKeys:    make(map[[8]byte]memTempKey),
 		phoneCodes:  make(map[string]memPhoneCode),
 		botStates:   make(map[int64]teled.BotFatherState),
 		botCommands: make(map[string][]teled.BotCommand),
@@ -387,6 +394,23 @@ func (d *DB) Unbind(_ context.Context, keyID [8]byte) error {
 	defer d.mu.Unlock()
 	delete(d.sessions, keyID)
 	return nil
+}
+
+func (d *DB) BindTempAuthKey(_ context.Context, tempKeyID, permKeyID [8]byte, expiresAt time.Time) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.tempKeys[tempKeyID] = memTempKey{perm: permKeyID, expiresAt: expiresAt}
+	return nil
+}
+
+func (d *DB) PermAuthKey(_ context.Context, tempKeyID [8]byte) ([8]byte, bool, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	tk, ok := d.tempKeys[tempKeyID]
+	if !ok || !tk.expiresAt.After(time.Now()) {
+		return [8]byte{}, false, nil
+	}
+	return tk.perm, true, nil
 }
 
 // --- messages ------------------------------------------------------------

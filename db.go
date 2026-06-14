@@ -113,6 +113,15 @@ type DB interface {
 	// Unbind removes the user binding for an auth key (logout).
 	Unbind(ctx context.Context, keyID [8]byte) error
 
+	// BindTempAuthKey records that a temporary (PFS) auth key maps to a permanent
+	// one (auth.bindTempAuthKey), valid until expiresAt. Requests on the temp key
+	// are then resolved to the permanent key for session/user lookup, so the
+	// authorization survives temp-key rotation and restarts.
+	BindTempAuthKey(ctx context.Context, tempKeyID, permKeyID [8]byte, expiresAt time.Time) error
+	// PermAuthKey returns the permanent key a temporary key is bound to, when the
+	// binding exists and has not expired.
+	PermAuthKey(ctx context.Context, tempKeyID [8]byte) (permKeyID [8]byte, ok bool, err error)
+
 	// SendMessage persists a DM atomically: the canonical message plus a
 	// per-account ref (with its own local id and pts) for sender and recipient.
 	// A non-zero mediaFileID attaches stored media.

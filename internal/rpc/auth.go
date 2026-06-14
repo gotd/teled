@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"regexp"
 	"strings"
@@ -245,10 +246,40 @@ func (h *Handler) authImportBotAuthorization(
 	return &tg.AuthAuthorization{User: toTGUser(*bot, true)}, nil
 }
 
+// authBindTempAuthKey records the binding of a temporary (PFS) auth key — the
+// one this request arrives on — to its permanent key, so requests on the temp
+// key resolve to the permanent key's logged-in user. Clients that use temporary
+// keys (e.g. Telegram Desktop) rotate them and re-bind on reconnect; without
+// this the user binding would be lost on every rotation and after restart.
+func (h *Handler) authBindTempAuthKey(ctx context.Context, req *tg.AuthBindTempAuthKeyRequest) (bool, error) {
+	if err := h.requireDB(); err != nil {
+		return false, err
+	}
+	tempID, ok := callerKeyID(ctx)
+	if !ok {
+		return false, tgerr.New(400, "ENCRYPTED_MESSAGE_INVALID")
+	}
+	var permID [8]byte
+	binary.LittleEndian.PutUint64(permID[:], uint64(req.PermAuthKeyID)) // #nosec G115 -- bit reinterpretation.
+	expires := time.Unix(int64(req.ExpiresAt), 0)
+	if err := h.db.BindTempAuthKey(ctx, tempID, permID, expires); err != nil {
+		return false, h.internal(ctx, "bind temp key", err)
+	}
+	log.For(h.lg).Debug(ctx, "auth.bindTempAuthKey",
+		log.String("temp_key", hex.EncodeToString(tempID[:])),
+		log.String("perm_key", hex.EncodeToString(permID[:])),
+	)
+	return true, nil
+}
+
 // authLogOut unbinds the session's user.
 func (h *Handler) authLogOut(ctx context.Context) (*tg.AuthLoggedOut, error) {
 	if h.db != nil {
 		if keyID, ok := callerKeyID(ctx); ok {
+			// Unbind the permanent key that actually holds the authorization.
+			if eff, err := h.effectiveKeyID(ctx, keyID); err == nil {
+				keyID = eff
+			}
 			if err := h.db.Unbind(ctx, keyID); err != nil {
 				return nil, h.internal(ctx, "unbind", err)
 			}

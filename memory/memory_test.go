@@ -317,6 +317,30 @@ func TestDBPhoneCodes(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestDBTempAuthKeys(t *testing.T) {
+	ctx := context.Background()
+	d := memory.NewDB()
+
+	temp := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
+	perm := [8]byte{9, 10, 11, 12, 13, 14, 15, 16}
+
+	// Unknown temp key resolves to nothing.
+	_, ok, err := d.PermAuthKey(ctx, temp)
+	require.NoError(t, err)
+	require.False(t, ok)
+
+	require.NoError(t, d.BindTempAuthKey(ctx, temp, perm, time.Now().Add(time.Hour)))
+	got, ok, err := d.PermAuthKey(ctx, temp)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, perm, got)
+
+	// Expired binding is not returned.
+	require.NoError(t, d.BindTempAuthKey(ctx, temp, perm, time.Now().Add(-time.Second)))
+	_, ok, _ = d.PermAuthKey(ctx, temp)
+	require.False(t, ok)
+}
+
 func TestDBBotFatherStateAndCommands(t *testing.T) {
 	ctx := context.Background()
 	d := memory.NewDB()

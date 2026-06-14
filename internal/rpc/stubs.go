@@ -98,10 +98,6 @@ func (h *Handler) authExportLoginToken(context.Context, *tg.AuthExportLoginToken
 	}, nil
 }
 
-func (h *Handler) authBindTempAuthKey(context.Context, *tg.AuthBindTempAuthKeyRequest) (bool, error) {
-	return true, nil
-}
-
 func (h *Handler) contactsGetContacts(context.Context, int64) (tg.ContactsContactsClass, error) {
 	return &tg.ContactsContacts{}, nil
 }

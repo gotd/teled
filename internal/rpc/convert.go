@@ -36,11 +36,32 @@ func toTGUser(u teled.User, self bool) *tg.User {
 	return user
 }
 
+// effectiveKeyID resolves a request's auth key to the key that holds the
+// authorization. A temporary (PFS) key bound via auth.bindTempAuthKey maps to
+// its permanent key; any other key passes through unchanged.
+func (h *Handler) effectiveKeyID(ctx context.Context, keyID [8]byte) ([8]byte, error) {
+	if h.db == nil {
+		return keyID, nil
+	}
+	perm, ok, err := h.db.PermAuthKey(ctx, keyID)
+	if err != nil {
+		return keyID, err
+	}
+	if ok {
+		return perm, nil
+	}
+	return keyID, nil
+}
+
 // callerUser resolves the user logged in on the requesting session, if any.
 func (h *Handler) callerUser(ctx context.Context) (teled.User, bool, error) {
 	keyID, ok := callerKeyID(ctx)
 	if !ok || h.db == nil {
 		return teled.User{}, false, nil
+	}
+	keyID, err := h.effectiveKeyID(ctx, keyID)
+	if err != nil {
+		return teled.User{}, false, err
 	}
 	userID, ok, err := h.db.SessionUserID(ctx, keyID)
 	if err != nil || !ok {
@@ -92,11 +113,17 @@ func dmMessage(m teled.Message) *tg.Message {
 	return msg
 }
 
-// bindCaller binds the requesting session's auth key to userID.
+// bindCaller binds the requesting session to userID. When the request arrives
+// on a temporary key, the binding is made on its permanent key, so it survives
+// temp-key rotation and reconnects.
 func (h *Handler) bindCaller(ctx context.Context, userID int64) error {
 	keyID, ok := callerKeyID(ctx)
 	if !ok {
 		return errors.New("no session on request")
+	}
+	keyID, err := h.effectiveKeyID(ctx, keyID)
+	if err != nil {
+		return err
 	}
 	return h.db.BindSession(ctx, keyID, userID)
 }

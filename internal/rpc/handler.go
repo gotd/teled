@@ -71,10 +71,13 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	defer span.End()
 	start := time.Now()
 
-	// Register the session for push if it belongs to a logged-in user.
+	// Register the session for push if it belongs to a logged-in user. Resolve
+	// temp (PFS) keys to their permanent key first, since the binding lives there.
 	if h.db != nil {
-		if userID, ok, err := h.db.SessionUserID(ctx, req.Session.AuthKey.ID); err == nil && ok {
-			h.sessions.track(userID, req.Session)
+		if keyID, err := h.effectiveKeyID(ctx, req.Session.AuthKey.ID); err == nil {
+			if userID, ok, err := h.db.SessionUserID(ctx, keyID); err == nil && ok {
+				h.sessions.track(userID, req.Session)
+			}
 		}
 	}
 
