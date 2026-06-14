@@ -354,6 +354,30 @@ func TestDBSearchUsers(t *testing.T) {
 	require.Empty(t, found)
 }
 
+func TestDBDrafts(t *testing.T) {
+	ctx := context.Background()
+	d := memory.NewDB()
+
+	a, _ := d.CreateUser(ctx, "+1", "A", "")
+	b, _ := d.CreateUser(ctx, "+2", "B", "")
+
+	_, err := d.SaveDraft(ctx, a.ID, b.ID, "hello draft")
+	require.NoError(t, err)
+
+	drafts, err := d.Drafts(ctx, a.ID)
+	require.NoError(t, err)
+	require.Len(t, drafts, 1)
+	require.Equal(t, "hello draft", drafts[0].Text)
+	require.Equal(t, b.ID, drafts[0].PeerUserID)
+
+	// Blank clears it.
+	_, err = d.SaveDraft(ctx, a.ID, b.ID, "  ")
+	require.NoError(t, err)
+	drafts, err = d.Drafts(ctx, a.ID)
+	require.NoError(t, err)
+	require.Empty(t, drafts)
+}
+
 func TestDBTempAuthKeys(t *testing.T) {
 	ctx := context.Background()
 	d := memory.NewDB()

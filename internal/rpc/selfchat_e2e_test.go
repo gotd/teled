@@ -110,3 +110,55 @@ func TestMessagesSearch(t *testing.T) {
 		require.Len(t, res.(*tg.MessagesMessages).Messages, 1)
 	})
 }
+
+// TestDrafts verifies saveDraft persists, getAllDrafts returns it, getDialogs
+// carries it, and a blank draft clears it.
+func TestDrafts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+		self := signUp(ctx, t, api, "+15552220001", "Drafter")
+
+		ok, err := api.MessagesSaveDraft(ctx, &tg.MessagesSaveDraftRequest{
+			Peer: &tg.InputPeerSelf{}, Message: "remember https://t.me/x",
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		all, err := api.MessagesGetAllDrafts(ctx)
+		require.NoError(t, err)
+
+		ups := all.(*tg.Updates).Updates
+		require.Len(t, ups, 1)
+		dm := ups[0].(*tg.UpdateDraftMessage).Draft.(*tg.DraftMessage)
+		require.Equal(t, "remember https://t.me/x", dm.Message)
+		require.NotEmpty(t, dm.Entities) // URL highlighted
+
+		// Dialog carries the draft.
+		dlgs, err := api.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerEmpty{}})
+		require.NoError(t, err)
+
+		var found bool
+
+		for _, dlg := range dlgs.(*tg.MessagesDialogs).Dialogs {
+			d := dlg.(*tg.Dialog)
+			if d.Peer.(*tg.PeerUser).UserID == self.ID {
+				_, ok := d.Draft.(*tg.DraftMessage)
+				found = ok
+			}
+		}
+
+		require.True(t, found, "self dialog should carry the draft")
+
+		// Blank clears it.
+		_, err = api.MessagesSaveDraft(ctx, &tg.MessagesSaveDraftRequest{Peer: &tg.InputPeerSelf{}, Message: ""})
+		require.NoError(t, err)
+		all, err = api.MessagesGetAllDrafts(ctx)
+		require.NoError(t, err)
+		require.Empty(t, all.(*tg.Updates).Updates)
+	})
+}

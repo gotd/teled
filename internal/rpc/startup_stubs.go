@@ -113,10 +113,6 @@ func (h *Handler) messagesGetSuggestedDialogFilters(context.Context) ([]tg.Dialo
 	return nil, nil
 }
 
-func (h *Handler) messagesSaveDraft(context.Context, *tg.MessagesSaveDraftRequest) (bool, error) {
-	return true, nil
-}
-
 func (h *Handler) messagesGetPeerSettings(context.Context, tg.InputPeerClass) (*tg.MessagesPeerSettings, error) {
 	return &tg.MessagesPeerSettings{}, nil
 }

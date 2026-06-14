@@ -157,6 +157,12 @@ type DB interface {
 
 	// GetDialogs returns the caller's conversations, newest activity first.
 	GetDialogs(ctx context.Context, self int64, limit int) ([]Dialog, error)
+
+	// SaveDraft stores (or, when text is blank, clears) the caller's draft for a
+	// peer and returns its date. A cleared draft returns a zero time.
+	SaveDraft(ctx context.Context, userID, peerID int64, text string) (date time.Time, err error)
+	// Drafts returns all of the caller's saved drafts, newest first.
+	Drafts(ctx context.Context, userID int64) ([]Draft, error)
 	// ReadHistory marks the caller's incoming messages from peer up to maxID as
 	// read and allocates a pts for the read event.
 	ReadHistory(ctx context.Context, self, peer, maxID int64) (pts int, err error)

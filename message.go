@@ -22,6 +22,14 @@ type Dialog struct {
 	TopMessageID   int64
 	ReadInboxMaxID int64
 	UnreadCount    int
+	Draft          *Draft // unsent draft for this conversation, nil when none
+}
+
+// Draft is a saved, unsent message for a conversation.
+type Draft struct {
+	PeerUserID int64
+	Text       string
+	Date       time.Time
 }
 
 // EditResult is the outcome of editing a message.

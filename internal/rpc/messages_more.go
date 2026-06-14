@@ -29,9 +29,20 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 		return nil, h.internal(ctx, "get dialogs", err)
 	}
 
+	drafts, err := h.db.Drafts(ctx, caller.ID)
+	if err != nil {
+		return nil, h.internal(ctx, "dialog drafts", err)
+	}
+
+	draftByPeer := make(map[int64]teled.Draft, len(drafts))
+	for _, d := range drafts {
+		draftByPeer[d.PeerUserID] = d
+	}
+
 	users := []tg.UserClass{h.tgUser(caller, true)}
 	outDialogs := make([]tg.DialogClass, 0, len(dialogs))
 	messages := make([]tg.MessageClass, 0, len(dialogs))
+	seen := make(map[int64]bool, len(dialogs))
 
 	for _, dl := range dialogs {
 		peer, ok, err := h.db.UserByID(ctx, dl.PeerUserID)
@@ -42,6 +53,8 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 		if !ok {
 			continue
 		}
+
+		seen[dl.PeerUserID] = true
 
 		users = append(users, h.tgUser(*peer, false))
 
@@ -60,9 +73,41 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 			ReadInboxMaxID: int(dl.ReadInboxMaxID),
 			UnreadCount:    dl.UnreadCount,
 		}
+
+		if dr, ok := draftByPeer[dl.PeerUserID]; ok {
+			d.Draft = draftMessage(dr)
+		}
+
 		d.SetFlags()
 		outDialogs = append(outDialogs, d)
 	}
+
+	// A draft alone forms a dialog (no messages exchanged yet). Prepend those
+	// not already covered, newest draft first.
+	draftOnly := make([]tg.DialogClass, 0)
+
+	for _, dr := range drafts {
+		if seen[dr.PeerUserID] {
+			continue
+		}
+
+		peer, ok, err := h.db.UserByID(ctx, dr.PeerUserID)
+		if err != nil {
+			return nil, h.internal(ctx, "draft peer", err)
+		}
+
+		if !ok {
+			continue
+		}
+
+		users = append(users, h.tgUser(*peer, false))
+
+		d := &tg.Dialog{Peer: &tg.PeerUser{UserID: dr.PeerUserID}, Draft: draftMessage(dr)}
+		d.SetFlags()
+		draftOnly = append(draftOnly, d)
+	}
+
+	outDialogs = append(draftOnly, outDialogs...)
 
 	return &tg.MessagesDialogs{Dialogs: outDialogs, Messages: messages, Users: users}, nil
 }

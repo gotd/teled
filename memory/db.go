@@ -42,6 +42,7 @@ type DB struct {
 	sessions   map[[8]byte]int64
 	tempKeys   map[[8]byte]memTempKey
 	phoneCodes map[string]memPhoneCode
+	drafts     map[int64]map[int64]teled.Draft // userID -> peerID -> draft
 	botStates  map[int64]teled.BotFatherState
 	// botCommands is keyed by botID|scope|lang; a present (possibly empty) value
 	// is distinct from an absent key, just as a stored row differs from no row.
@@ -102,6 +103,7 @@ func NewDB() *DB {
 		sessions:    make(map[[8]byte]int64),
 		tempKeys:    make(map[[8]byte]memTempKey),
 		phoneCodes:  make(map[string]memPhoneCode),
+		drafts:      make(map[int64]map[int64]teled.Draft),
 		botStates:   make(map[int64]teled.BotFatherState),
 		botCommands: make(map[string][]teled.BotCommand),
 	}
@@ -680,6 +682,42 @@ func (d *DB) GetHistory(_ context.Context, self, peer, offsetID int64, limit int
 	}
 
 	return msgs, nil
+}
+
+// SaveDraft stores (or clears, when blank) the caller's draft for a peer.
+func (d *DB) SaveDraft(_ context.Context, userID, peerID int64, text string) (time.Time, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if strings.TrimSpace(text) == "" {
+		delete(d.drafts[userID], peerID)
+		return time.Time{}, nil
+	}
+
+	date := time.Now()
+
+	if d.drafts[userID] == nil {
+		d.drafts[userID] = map[int64]teled.Draft{}
+	}
+
+	d.drafts[userID][peerID] = teled.Draft{PeerUserID: peerID, Text: text, Date: date}
+
+	return date, nil
+}
+
+// Drafts returns all of the caller's saved drafts, newest first.
+func (d *DB) Drafts(_ context.Context, userID int64) ([]teled.Draft, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var drafts []teled.Draft
+	for _, dr := range d.drafts[userID] {
+		drafts = append(drafts, dr)
+	}
+
+	sort.Slice(drafts, func(i, j int) bool { return drafts[i].Date.After(drafts[j].Date) })
+
+	return drafts, nil
 }
 
 // SearchMessages returns the caller's messages with peer whose text matches
