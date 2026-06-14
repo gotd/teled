@@ -94,8 +94,43 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 		c := newBufferedConn(conn)
 		c.Push(b)
 
-		key, err := s.exchange(ctx, exchangeConn{Conn: c})
+		key, err := s.exchange(ctx, c)
 		if err != nil {
+			// The client sent a frame encrypted with an existing auth key
+			// instead of an unencrypted exchange message: it is reusing an
+			// already-established key, not performing key exchange. Resolve the
+			// key and handle the frame as a normal RPC. Replying with -404 here
+			// would tell clients like Telegram Desktop to discard a still-valid
+			// temporary key, triggering a reconnect/key-exchange storm.
+			var encErr *exchange.UnexpectedEncryptedError
+			if errors.As(err, &encErr) {
+				_, ok, lookupErr := s.registry.getSession(ctx, encErr.AuthKeyID)
+				if lookupErr != nil {
+					return errors.Wrap(lookupErr, "lookup session")
+				}
+
+				if ok {
+					var fb bin.Buffer
+					fb.ResetTo(encErr.Frame)
+
+					if err := s.rpcHandle(ctx, conn, &fb); err != nil {
+						return errors.Wrap(err, "handle")
+					}
+
+					continue
+				}
+
+				// Genuinely unknown key: ask the client to re-run key exchange.
+				log.For(s.log).Warn(ctx, "Auth key not found during exchange; sending -404",
+					log.String("key_id", hex.EncodeToString(encErr.AuthKeyID[:])))
+
+				if err := s.sendProtoError(ctx, conn, codec.CodeAuthKeyNotFound); err != nil {
+					return errors.Wrap(err, "send AuthKeyNotFound")
+				}
+
+				continue
+			}
+
 			var exchangeErr *exchange.ServerExchangeError
 			if errors.As(err, &exchangeErr) {
 				log.For(s.log).Warn(ctx, "Key exchange failed; sending proto error",
