@@ -64,6 +64,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetEmojiStickers(h.messagesGetEmojiStickers)
 	d.OnMessagesGetFavedStickers(h.messagesGetFavedStickers)
 	d.OnMessagesGetFeaturedStickers(h.messagesGetFeaturedStickers)
+	d.OnMessagesGetFeaturedEmojiStickers(h.messagesGetFeaturedEmojiStickers)
 	d.OnMessagesGetPeerDialogs(h.messagesGetPeerDialogs)
 
 	// Updates (stubs until M4).
