@@ -7,8 +7,8 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
-	"go.uber.org/zap"
 
+	"github.com/gotd/log"
 	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/queue"
@@ -19,7 +19,7 @@ import (
 // runs standalone with in-memory auth keys (lost on restart).
 func (a *application) setupStorage(ctx context.Context, providers obs.Providers) (*pgxpool.Pool, func(), error) {
 	if a.PostgresURI == "" {
-		a.lg.Warn("No --postgres-uri set; auth keys are kept in memory and lost on restart")
+		log.For(a.lg).Warn(ctx, "No --postgres-uri set; auth keys are kept in memory and lost on restart")
 		return nil, func() {}, nil
 	}
 
@@ -51,11 +51,11 @@ func (a *application) setupStorage(ctx context.Context, providers obs.Providers)
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := q.Stop(stopCtx); err != nil {
-			a.lg.Warn("Stop queue", zap.Error(err))
+			log.For(a.lg).Warn(stopCtx, "Stop queue", log.Error(err))
 		}
 		pool.Close()
 	}
 
-	a.lg.Info("Connected to PostgreSQL")
+	log.For(a.lg).Info(ctx, "Connected to PostgreSQL")
 	return pool, cleanup, nil
 }

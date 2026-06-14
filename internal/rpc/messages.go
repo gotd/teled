@@ -3,8 +3,7 @@ package rpc
 import (
 	"context"
 
-	"go.uber.org/zap"
-
+	"github.com/gotd/log"
 	"github.com/gotd/td/proto"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
@@ -32,7 +31,7 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 
 	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID, 0)
 	if err != nil {
-		return nil, h.internal("send message", err)
+		return nil, h.internal(ctx, "send message", err)
 	}
 
 	out := dmMessage(teled.Message{
@@ -72,7 +71,7 @@ func (h *Handler) push(ctx context.Context, userID int64, users []tg.UserClass, 
 	wrap := &tg.Updates{Updates: updates, Users: users, Date: date}
 	for _, s := range sessions {
 		if err := server.Send(ctx, s, proto.MessageFromServer, wrap); err != nil {
-			h.lg.Debug("push failed", zap.Error(err))
+			log.For(h.lg).Debug(ctx, "push failed", log.Error(err))
 		}
 	}
 }
@@ -115,7 +114,7 @@ func (h *Handler) messagesGetHistory(ctx context.Context, req *tg.MessagesGetHis
 
 	msgs, err := h.db.GetHistory(ctx, caller.ID, peer.ID, int64(req.OffsetID), limit)
 	if err != nil {
-		return nil, h.internal("get history", err)
+		return nil, h.internal(ctx, "get history", err)
 	}
 
 	out := make([]tg.MessageClass, 0, len(msgs))
@@ -135,7 +134,7 @@ func (h *Handler) contactsResolveUsername(ctx context.Context, req *tg.ContactsR
 	}
 	u, ok, err := h.db.UserByUsername(ctx, req.Username)
 	if err != nil {
-		return nil, h.internal("resolve username", err)
+		return nil, h.internal(ctx, "resolve username", err)
 	}
 	if !ok {
 		return nil, tgerr.New(400, "USERNAME_NOT_OCCUPIED")

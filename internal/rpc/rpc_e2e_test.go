@@ -56,11 +56,11 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 
 	store, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
-	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
+	handler := New(logzap.New(log.Named("rpc")), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool), // Persisted: sessions.key_id FK -> auth_keys.
-		Logger: log.Named("server"),
+		Logger: logzap.New(log.Named("server")),
 	})
 
 	g := tdsync.NewCancellableGroup(ctx)

@@ -76,7 +76,7 @@ func TestServerEndToEnd(t *testing.T) {
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), handler, mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   keys,
-		Logger: log.Named("server"),
+		Logger: logzap.New(log.Named("server")),
 	})
 
 	g := tdsync.NewCancellableGroup(ctx)

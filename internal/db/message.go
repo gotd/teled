@@ -11,12 +11,12 @@ import (
 	"github.com/gotd/teled"
 )
 
-// Update log types.
+// Update log types, aliased from the shared contract.
 const (
-	updNewMessage  = "new"
-	updEditMessage = "edit"
-	updDelete      = "delete"
-	updReadInbox   = "readinbox"
+	updNewMessage  = teled.UpdateNew
+	updEditMessage = teled.UpdateEdit
+	updDelete      = teled.UpdateDelete
+	updReadInbox   = teled.UpdateReadInbox
 )
 
 // allocate bumps the per-account local message id and common pts in one step,

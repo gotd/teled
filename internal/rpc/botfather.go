@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.uber.org/zap"
-
+	"github.com/gotd/log"
 	"github.com/gotd/td/tg"
 
 	"github.com/gotd/teled"
@@ -42,13 +41,13 @@ const (
 func (h *Handler) handleBotFather(ctx context.Context, caller, botFather teled.User, text string) {
 	replies, err := h.botFatherEngine(ctx, caller, text)
 	if err != nil {
-		h.lg.Error("botfather engine", zap.Error(err))
+		log.For(h.lg).Error(ctx, "botfather engine", log.Error(err))
 		return
 	}
 	for _, reply := range replies {
 		sent, err := h.db.SendMessage(ctx, botFather.ID, caller.ID, reply, 0, 0)
 		if err != nil {
-			h.lg.Error("botfather reply", zap.Error(err))
+			log.For(h.lg).Error(ctx, "botfather reply", log.Error(err))
 			return
 		}
 		incoming := dmMessage(teled.Message{

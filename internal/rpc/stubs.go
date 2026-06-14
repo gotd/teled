@@ -57,6 +57,14 @@ func (h *Handler) helpGetCountriesList(context.Context, *tg.HelpGetCountriesList
 					{CountryCode: "1337", Patterns: []string{"XXX XXX"}, Prefixes: []string{"+1337", "1337"}},
 				},
 			},
+			{
+				ISO2:        "TS",
+				Name:        "Test",
+				DefaultName: "Test",
+				CountryCodes: []tg.HelpCountryCode{
+					{CountryCode: "99966", Patterns: []string{"X XXXX"}, Prefixes: []string{"+99966", "99966"}},
+				},
+			},
 		},
 	}, nil
 }

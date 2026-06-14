@@ -52,7 +52,7 @@ func (h *Handler) botsSetBotCommands(ctx context.Context, req *tg.BotsSetBotComm
 	}
 
 	if err := h.db.SetBotCommands(ctx, bot.ID, scopeKey(req.Scope), req.LangCode, commands); err != nil {
-		return false, h.internal("set bot commands", err)
+		return false, h.internal(ctx, "set bot commands", err)
 	}
 	return true, nil
 }
@@ -66,7 +66,7 @@ func (h *Handler) botsGetBotCommands(ctx context.Context, req *tg.BotsGetBotComm
 
 	commands, err := h.db.BotCommands(ctx, bot.ID, scopeKey(req.Scope), req.LangCode)
 	if err != nil {
-		return nil, h.internal("get bot commands", err)
+		return nil, h.internal(ctx, "get bot commands", err)
 	}
 
 	out := make([]tg.BotCommand, len(commands))
@@ -84,7 +84,7 @@ func (h *Handler) botsResetBotCommands(ctx context.Context, req *tg.BotsResetBot
 	}
 
 	if err := h.db.ResetBotCommands(ctx, bot.ID, scopeKey(req.Scope), req.LangCode); err != nil {
-		return false, h.internal("reset bot commands", err)
+		return false, h.internal(ctx, "reset bot commands", err)
 	}
 	return true, nil
 }

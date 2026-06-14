@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 
+	"github.com/gotd/log"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/transport"
 
@@ -40,8 +40,12 @@ type Options struct {
 	// help.getConfig. They should match how clients reach the listener.
 	Host string
 	Port int
-	// Logger receives server logs. Defaults to zap.NewNop.
-	Logger *zap.Logger
+	// Logger receives server logs. Defaults to a no-op logger.
+	Logger log.Logger
+	// DB overrides the storage backend. When nil, New builds the PostgreSQL
+	// backend from pool (or runs with no persistence when pool is also nil).
+	// Set it to plug in an alternative, e.g. github.com/gotd/teled/memory.
+	DB teled.DB
 	// Obfuscated wraps the listener in MTProto's obfuscated transport, as the
 	// production server does. Leave false to auto-detect the transport codec,
 	// which is what in-process test clients use.
@@ -67,29 +71,27 @@ func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts 
 	if opts.DC == 0 {
 		opts.DC = 1
 	}
-	if opts.Logger == nil {
-		opts.Logger = zap.NewNop()
-	}
+	lg := log.OrNop(opts.Logger)
 	providers := obs.Providers{
 		TracerProvider: opts.TracerProvider,
 		MeterProvider:  opts.MeterProvider,
 	}
 
-	var (
-		database *db.DB
-		keys     mtproto.KeyStorage
-	)
+	database := opts.DB
+	var keys mtproto.KeyStorage
 	if pool != nil {
-		database = db.New(pool)
+		if database == nil {
+			database = db.New(pool)
+		}
 		keys = db.NewKeyStore(pool)
 	} else {
 		keys = mtproto.NewInMemoryKeys()
 	}
 
-	handler := rpc.New(opts.Logger.Named("rpc"), database, store, opts.DC, opts.Host, opts.Port, providers)
+	handler := rpc.New(log.Named(lg, "rpc"), database, store, opts.DC, opts.Host, opts.Port, providers)
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(key), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:        opts.DC,
-		Logger:    opts.Logger.Named("mtproto"),
+		Logger:    log.Named(lg, "mtproto"),
 		Keys:      keys,
 		Providers: providers,
 	})

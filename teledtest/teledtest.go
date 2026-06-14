@@ -90,7 +90,7 @@ func New(tb testing.TB) *Server {
 		tb.Fatalf("teledtest: object store: %v", err)
 	}
 
-	lg := zaptest.NewLogger(tb, zaptest.Level(zapcore.WarnLevel))
+	lg := logzap.New(zaptest.NewLogger(tb, zaptest.Level(zapcore.WarnLevel)))
 	srv := server.New(key, pool, store, server.Options{
 		DC:     dc,
 		Host:   addr.IP.String(),

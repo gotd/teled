@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/gotd/log"
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/exchange"
 	"github.com/gotd/td/proto/codec"
@@ -35,13 +36,13 @@ func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code i
 
 // serveConn serves a single client connection until it is closed.
 func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
-	s.log.Debug("Client connected")
+	log.For(s.log).Debug(ctx, "Client connected")
 	s.obs.activeConns.Add(ctx, 1)
 	defer func() {
 		s.obs.activeConns.Add(ctx, -1)
 		s.registry.removeConn(conn)
 		_ = conn.Close()
-		s.log.Debug("Client disconnected")
+		log.For(s.log).Debug(ctx, "Client disconnected")
 	}()
 
 	b := new(bin.Buffer)
@@ -76,7 +77,7 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 		}
 
 		// Zero auth key id: start key exchange.
-		s.log.Debug("Starting key exchange")
+		log.For(s.log).Debug(ctx, "Starting key exchange")
 		c := newBufferedConn(conn)
 		c.Push(b)
 

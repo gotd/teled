@@ -8,7 +8,6 @@ import (
 	"github.com/gotd/td/tgerr"
 
 	"github.com/gotd/teled"
-	"github.com/gotd/teled/internal/db"
 )
 
 const dialogsDefaultLimit = 100
@@ -27,7 +26,7 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 
 	dialogs, err := h.db.GetDialogs(ctx, caller.ID, limit)
 	if err != nil {
-		return nil, h.internal("get dialogs", err)
+		return nil, h.internal(ctx, "get dialogs", err)
 	}
 
 	users := []tg.UserClass{toTGUser(caller, true)}
@@ -37,7 +36,7 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 	for _, dl := range dialogs {
 		peer, ok, err := h.db.UserByID(ctx, dl.PeerUserID)
 		if err != nil {
-			return nil, h.internal("dialog peer", err)
+			return nil, h.internal(ctx, "dialog peer", err)
 		}
 		if !ok {
 			continue
@@ -46,7 +45,7 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 
 		top, err := h.db.GetHistory(ctx, caller.ID, dl.PeerUserID, 0, 1)
 		if err != nil {
-			return nil, h.internal("dialog top", err)
+			return nil, h.internal(ctx, "dialog top", err)
 		}
 		if len(top) > 0 {
 			messages = append(messages, dmMessage(top[0]))
@@ -78,7 +77,7 @@ func (h *Handler) messagesReadHistory(ctx context.Context, req *tg.MessagesReadH
 
 	pts, err := h.db.ReadHistory(ctx, caller.ID, peer.ID, int64(req.MaxID))
 	if err != nil {
-		return nil, h.internal("read history", err)
+		return nil, h.internal(ctx, "read history", err)
 	}
 	return &tg.MessagesAffectedMessages{Pts: pts, PtsCount: 1}, nil
 }
@@ -96,10 +95,10 @@ func (h *Handler) messagesEditMessage(ctx context.Context, req *tg.MessagesEditM
 
 	res, err := h.db.EditMessage(ctx, caller.ID, int64(req.ID), req.Message)
 	if err != nil {
-		if errors.Is(err, db.ErrMessageID) {
+		if errors.Is(err, teled.ErrMessageID) {
 			return nil, tgerr.New(400, "MESSAGE_ID_INVALID")
 		}
-		return nil, h.internal("edit message", err)
+		return nil, h.internal(ctx, "edit message", err)
 	}
 
 	edited := dmMessage(teled.Message{
@@ -140,7 +139,7 @@ func (h *Handler) messagesDeleteMessages(ctx context.Context, req *tg.MessagesDe
 
 	res, err := h.db.DeleteMessages(ctx, caller.ID, ids)
 	if err != nil {
-		return nil, h.internal("delete messages", err)
+		return nil, h.internal(ctx, "delete messages", err)
 	}
 	return &tg.MessagesAffectedMessages{Pts: res.Pts, PtsCount: res.PtsCount}, nil
 }

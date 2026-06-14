@@ -4,8 +4,7 @@ import (
 	"io"
 	"time"
 
-	"go.uber.org/zap"
-
+	"github.com/gotd/log"
 	"github.com/gotd/td/clock"
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/mt"
@@ -23,8 +22,8 @@ type ServerOptions struct {
 	DC int
 	// Random is the random source. Defaults to crypto.DefaultRand.
 	Random io.Reader
-	// Logger is the zap logger. No logs by default.
-	Logger *zap.Logger
+	// Logger receives server logs. No logs by default.
+	Logger log.Logger
 	// Keys persists auth keys. Defaults to an in-memory store.
 	Keys KeyStorage
 	// Clock to use. Defaults to clock.System.
@@ -50,7 +49,7 @@ func (opt *ServerOptions) setDefaults() {
 		opt.Random = crypto.DefaultRand()
 	}
 	if opt.Logger == nil {
-		opt.Logger = zap.NewNop()
+		opt.Logger = log.Nop
 	}
 	if opt.Keys == nil {
 		opt.Keys = NewInMemoryKeys()

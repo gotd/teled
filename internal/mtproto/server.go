@@ -9,8 +9,8 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/go-faster/errors"
-	"go.uber.org/zap"
 
+	"github.com/gotd/log"
 	"github.com/gotd/td/clock"
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/exchange"
@@ -36,7 +36,7 @@ type Server struct {
 	registry *registry
 
 	types *tmap.Map
-	log   *zap.Logger
+	log   log.Logger
 	obs   observability
 }
 
@@ -73,8 +73,8 @@ func (s *Server) Key() exchange.PublicKey {
 // Serve runs the server loop using the given listener until ctx is canceled or
 // the listener is closed.
 func (s *Server) Serve(ctx context.Context, l transport.Listener) error {
-	s.log.Info("Serving")
-	defer s.log.Info("Stopping")
+	log.For(s.log).Info(ctx, "Serving")
+	defer log.For(s.log).Info(ctx, "Stopping")
 
 	grp := tdsync.NewCancellableGroup(ctx)
 	grp.Go(func(ctx context.Context) error {
@@ -89,7 +89,7 @@ func (s *Server) Serve(ctx context.Context, l transport.Listener) error {
 
 			grp.Go(func(ctx context.Context) error {
 				if err := s.serveConn(ctx, conn); err != nil && !isClientGone(err) {
-					s.log.Info("Serving handler error", zap.Error(err))
+					log.For(s.log).Info(ctx, "Serving handler error", log.Error(err))
 				}
 				return nil
 			})

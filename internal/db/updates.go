@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"time"
 
@@ -84,18 +83,4 @@ func (db *DB) GetDifference(ctx context.Context, self int64, sincePts, limit int
 		return nil, 0, gerrors.Wrap(err, "rows")
 	}
 	return entries, current.Pts, nil
-}
-
-// DecodeDeleted extracts deleted local ids from a delete log entry.
-func DecodeDeleted(extra []byte) []int64 {
-	var d deleteExtra
-	_ = json.Unmarshal(extra, &d)
-	return d.IDs
-}
-
-// DecodeRead extracts (peer, maxID) from a read log entry.
-func DecodeRead(extra []byte) (peer, maxID int64) {
-	var r readExtra
-	_ = json.Unmarshal(extra, &r)
-	return r.Peer, r.MaxID
 }

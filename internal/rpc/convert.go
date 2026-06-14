@@ -61,7 +61,7 @@ func (h *Handler) resolvePeerUser(ctx context.Context, caller teled.User, peer t
 	case *tg.InputPeerUser:
 		u, ok, err := h.db.UserByID(ctx, p.UserID)
 		if err != nil {
-			return teled.User{}, h.internal("lookup peer", err)
+			return teled.User{}, h.internal(ctx, "lookup peer", err)
 		}
 		if !ok || u.AccessHash != p.AccessHash {
 			return teled.User{}, tgerr.New(400, "PEER_ID_INVALID")

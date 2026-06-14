@@ -9,6 +9,7 @@ require (
 	github.com/go-faster/jx v1.2.0
 	github.com/go-faster/sdk v0.35.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
+	github.com/gotd/log v0.1.0
 	github.com/gotd/log/logzap v0.1.1
 	github.com/gotd/td v0.156.2
 	github.com/jackc/pgx/v5 v5.10.0
@@ -60,7 +61,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gotd/ige v0.2.2 // indirect
-	github.com/gotd/log v0.1.0 // indirect
 	github.com/gotd/neo v0.1.5 // indirect
 	github.com/grafana/otel-profiling-go v0.5.3 // indirect
 	github.com/grafana/pyroscope-go v1.3.1 // indirect

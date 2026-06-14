@@ -9,22 +9,21 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	"go.uber.org/zap"
 
+	"github.com/gotd/log"
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
 
 	"github.com/gotd/teled"
-	"github.com/gotd/teled/internal/db"
 	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/obs"
 )
 
 // Handler owns the server dispatcher and backs RPCs with storage.
 type Handler struct {
-	lg    *zap.Logger
-	db    *db.DB
+	lg    log.Logger
+	db    teled.DB
 	store teled.ObjectStore
 	dc    int
 	host  string
@@ -40,7 +39,7 @@ type Handler struct {
 // New builds a Handler and registers all supported RPCs. database and store may
 // be nil, in which case the corresponding RPCs return an error. providers
 // supplies the OpenTelemetry tracer and meter for this layer.
-func New(lg *zap.Logger, database *db.DB, store teled.ObjectStore, dc int, host string, port int, providers obs.Providers) *Handler {
+func New(lg log.Logger, database teled.DB, store teled.ObjectStore, dc int, host string, port int, providers obs.Providers) *Handler {
 	h := &Handler{
 		lg: lg, db: database, store: store, dc: dc, host: host, port: port,
 		sessions: newSessionRegistry(), staging: newUploadStaging(),
@@ -110,15 +109,15 @@ func (h *Handler) requireDB() error {
 
 // internal logs an operational error and returns a generic RPC error, so
 // internal details are not leaked to clients.
-func (h *Handler) internal(op string, err error) error {
-	h.lg.Error("RPC internal error", zap.String("op", op), zap.Error(err))
+func (h *Handler) internal(ctx context.Context, op string, err error) error {
+	log.For(h.lg).Error(ctx, "RPC internal error", log.String("op", op), log.Error(err))
 	return tgerr.New(500, "INTERNAL")
 }
 
 // fallback answers unregistered RPCs without crashing the server.
 func (h *Handler) fallback(ctx context.Context, b *bin.Buffer) (bin.Encoder, error) {
 	id, _ := b.PeekID()
-	h.lg.Debug("Unhandled RPC", zap.String("type", tg.TypesMap()[id]))
+	log.For(h.lg).Debug(ctx, "Unhandled RPC", log.String("type", tg.TypesMap()[id]))
 	return nil, tgerr.New(500, "NOT_IMPLEMENTED")
 }
 
@@ -154,7 +153,7 @@ func (h *Handler) requireCaller(ctx context.Context) (teled.User, error) {
 	}
 	u, ok, err := h.callerUser(ctx)
 	if err != nil {
-		return teled.User{}, h.internal("caller", err)
+		return teled.User{}, h.internal(ctx, "caller", err)
 	}
 	if !ok {
 		return teled.User{}, tgerr.New(401, "AUTH_KEY_UNREGISTERED")

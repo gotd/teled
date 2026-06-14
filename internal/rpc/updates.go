@@ -7,7 +7,6 @@ import (
 	"github.com/gotd/td/tg"
 
 	"github.com/gotd/teled"
-	"github.com/gotd/teled/internal/db"
 )
 
 const differenceLimit = 1000
@@ -20,7 +19,7 @@ func (h *Handler) updatesGetState(ctx context.Context) (*tg.UpdatesState, error)
 	}
 	st, err := h.db.GetState(ctx, caller.ID)
 	if err != nil {
-		return nil, h.internal("get state", err)
+		return nil, h.internal(ctx, "get state", err)
 	}
 	return tgState(st), nil
 }
@@ -34,7 +33,7 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 
 	entries, currentPts, err := h.db.GetDifference(ctx, caller.ID, req.Pts, differenceLimit)
 	if err != nil {
-		return nil, h.internal("get difference", err)
+		return nil, h.internal(ctx, "get difference", err)
 	}
 	if len(entries) == 0 {
 		return &tg.UpdatesDifferenceEmpty{Date: int(time.Now().Unix()), Seq: 0}, nil
@@ -48,13 +47,13 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 
 	for _, e := range entries {
 		switch e.Type {
-		case "new":
+		case teled.UpdateNew:
 			if msg, ok := h.messageByGlobal(ctx, caller.ID, e); ok {
 				newMessages = append(newMessages, dmMessage(msg))
 				userIDs[msg.FromUserID] = struct{}{}
 				userIDs[msg.PeerUserID] = struct{}{}
 			}
-		case "edit":
+		case teled.UpdateEdit:
 			if msg, ok := h.messageByGlobal(ctx, caller.ID, e); ok {
 				otherUpdates = append(otherUpdates, &tg.UpdateEditMessage{
 					Message: dmMessage(msg), Pts: e.Pts, PtsCount: e.PtsCount,
@@ -62,8 +61,8 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 				userIDs[msg.FromUserID] = struct{}{}
 				userIDs[msg.PeerUserID] = struct{}{}
 			}
-		case "delete":
-			ids := db.DecodeDeleted(e.Extra)
+		case teled.UpdateDelete:
+			ids := teled.DecodeDeleted(e.Extra)
 			msgIDs := make([]int, len(ids))
 			for i, id := range ids {
 				msgIDs[i] = int(id)
@@ -71,8 +70,8 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 			otherUpdates = append(otherUpdates, &tg.UpdateDeleteMessages{
 				Messages: msgIDs, Pts: e.Pts, PtsCount: e.PtsCount,
 			})
-		case "readinbox":
-			peer, maxID := db.DecodeRead(e.Extra)
+		case teled.UpdateReadInbox:
+			peer, maxID := teled.DecodeRead(e.Extra)
 			userIDs[peer] = struct{}{}
 			otherUpdates = append(otherUpdates, &tg.UpdateReadHistoryInbox{
 				Peer: &tg.PeerUser{UserID: peer}, MaxID: int(maxID), Pts: e.Pts, PtsCount: e.PtsCount,
@@ -82,7 +81,7 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 
 	users, err := h.usersByIDs(ctx, caller.ID, userIDs)
 	if err != nil {
-		return nil, h.internal("difference users", err)
+		return nil, h.internal(ctx, "difference users", err)
 	}
 
 	return &tg.UpdatesDifference{

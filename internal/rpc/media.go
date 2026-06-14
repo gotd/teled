@@ -76,19 +76,19 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 	sum := sha256.Sum256(data)
 	key := hex.EncodeToString(sum[:])
 	if err := h.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), teled.PutOptions{}); err != nil {
-		return nil, h.internal("store put", err)
+		return nil, h.internal(ctx, "store put", err)
 	}
 
 	file, err := h.db.SaveFile(ctx, teled.File{
 		OwnerUserID: caller.ID, ObjectKey: key, Size: int64(len(data)), SHA256: sum[:], Kind: "photo",
 	})
 	if err != nil {
-		return nil, h.internal("save file", err)
+		return nil, h.internal(ctx, "save file", err)
 	}
 
 	sent, err := h.db.SendMessage(ctx, caller.ID, peer.ID, req.Message, req.RandomID, file.ID)
 	if err != nil {
-		return nil, h.internal("send media message", err)
+		return nil, h.internal(ctx, "send media message", err)
 	}
 
 	out := dmMessage(teled.Message{
@@ -133,7 +133,7 @@ func (h *Handler) uploadGetFile(ctx context.Context, req *tg.UploadGetFileReques
 	}
 	file, ok, err := h.db.FileByID(ctx, id)
 	if err != nil {
-		return nil, h.internal("file lookup", err)
+		return nil, h.internal(ctx, "file lookup", err)
 	}
 	if !ok || file.AccessHash != accessHash {
 		return nil, tgerr.New(400, "FILE_ID_INVALID")
@@ -141,12 +141,12 @@ func (h *Handler) uploadGetFile(ctx context.Context, req *tg.UploadGetFileReques
 
 	rc, err := h.store.GetRange(ctx, file.ObjectKey, req.Offset, int64(req.Limit))
 	if err != nil {
-		return nil, h.internal("get range", err)
+		return nil, h.internal(ctx, "get range", err)
 	}
 	defer func() { _ = rc.Close() }()
 	data, err := io.ReadAll(rc)
 	if err != nil {
-		return nil, h.internal("read", err)
+		return nil, h.internal(ctx, "read", err)
 	}
 
 	return &tg.UploadFile{Type: &tg.StorageFilePartial{}, Bytes: data}, nil

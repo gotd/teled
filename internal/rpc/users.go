@@ -19,7 +19,7 @@ func (h *Handler) usersGetUsers(ctx context.Context, ids []tg.InputUserClass) ([
 
 	caller, loggedIn, err := h.callerUser(ctx)
 	if err != nil {
-		return nil, h.internal("caller", err)
+		return nil, h.internal(ctx, "caller", err)
 	}
 
 	out := make([]tg.UserClass, 0, len(ids))
@@ -33,7 +33,7 @@ func (h *Handler) usersGetUsers(ctx context.Context, ids []tg.InputUserClass) ([
 		case *tg.InputUser:
 			u, ok, err := h.db.UserByID(ctx, v.UserID)
 			if err != nil {
-				return nil, h.internal("lookup user", err)
+				return nil, h.internal(ctx, "lookup user", err)
 			}
 			if !ok || u.AccessHash != v.AccessHash {
 				out = append(out, &tg.UserEmpty{ID: v.UserID})
@@ -56,7 +56,7 @@ func (h *Handler) usersGetFullUser(ctx context.Context, id tg.InputUserClass) (*
 
 	caller, loggedIn, err := h.callerUser(ctx)
 	if err != nil {
-		return nil, h.internal("caller", err)
+		return nil, h.internal(ctx, "caller", err)
 	}
 
 	var target teled.User
@@ -69,7 +69,7 @@ func (h *Handler) usersGetFullUser(ctx context.Context, id tg.InputUserClass) (*
 	case *tg.InputUser:
 		u, ok, err := h.db.UserByID(ctx, v.UserID)
 		if err != nil {
-			return nil, h.internal("lookup user", err)
+			return nil, h.internal(ctx, "lookup user", err)
 		}
 		if !ok || u.AccessHash != v.AccessHash {
 			return nil, tgerr.New(400, "USER_ID_INVALID")

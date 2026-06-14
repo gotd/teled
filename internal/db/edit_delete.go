@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	gerrors "github.com/go-faster/errors"
@@ -10,11 +9,6 @@ import (
 
 	"github.com/gotd/teled"
 )
-
-// deleteExtra is the updates_log payload for a delete event.
-type deleteExtra struct {
-	IDs []int64 `json:"ids"`
-}
 
 // EditMessage updates the text of a message the caller sent, returning the data
 // needed to emit edit updates to both participants.
@@ -31,7 +25,7 @@ func (db *DB) EditMessage(ctx context.Context, self, localID int64, text string)
 		self, localID,
 	).Scan(&globalID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return teled.EditResult{}, ErrMessageID
+			return teled.EditResult{}, teled.ErrMessageID
 		}
 		return teled.EditResult{}, gerrors.Wrap(err, "find ref")
 	}
@@ -44,7 +38,7 @@ func (db *DB) EditMessage(ctx context.Context, self, localID int64, text string)
 		text, globalID, self,
 	).Scan(&res.Date, &res.EditDate, &res.PeerUserID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return teled.EditResult{}, ErrMessageID // not the sender, or deleted
+			return teled.EditResult{}, teled.ErrMessageID // not the sender, or deleted
 		}
 		return teled.EditResult{}, gerrors.Wrap(err, "update message")
 	}
@@ -108,7 +102,7 @@ func (db *DB) DeleteMessages(ctx context.Context, self int64, localIDs []int64) 
 		if res.Pts, err = allocatePts(ctx, tx, self, len(deleted)); err != nil {
 			return teled.DeleteResult{}, gerrors.Wrap(err, "allocate")
 		}
-		extra, _ := json.Marshal(deleteExtra{IDs: deleted})
+		extra := teled.EncodeDeleted(deleted)
 		if err := logUpdate(ctx, tx, self, res.Pts, len(deleted), updDelete, nil, extra); err != nil {
 			return teled.DeleteResult{}, gerrors.Wrap(err, "log delete")
 		}

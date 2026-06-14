@@ -10,8 +10,7 @@ import (
 	"context"
 	"encoding/hex"
 
-	"go.uber.org/zap/zapcore"
-
+	"github.com/gotd/log"
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/crypto"
 )
@@ -24,11 +23,13 @@ type Session struct {
 	AuthKey crypto.AuthKey
 }
 
-// MarshalLogObject implements zap.ObjectMarshaler.
-func (s Session) MarshalLogObject(encoder zapcore.ObjectEncoder) error {
-	encoder.AddInt64("session_id", s.ID)
-	encoder.AddString("key_id", hex.EncodeToString(s.AuthKey.ID[:]))
-	return nil
+// logAttr returns the session as an inlined log group (matching zap.Inline):
+// an empty key inlines session_id and key_id into the parent record.
+func (s Session) logAttr() log.Attr {
+	return log.Group("",
+		log.Int64("session_id", s.ID),
+		log.String("key_id", hex.EncodeToString(s.AuthKey.ID[:])),
+	)
 }
 
 // Request represents an MTProto RPC request.

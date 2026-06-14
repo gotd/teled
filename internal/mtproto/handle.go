@@ -8,8 +8,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
-	"go.uber.org/zap"
 
+	"github.com/gotd/log"
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/mt"
@@ -55,7 +55,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 		AuthKey: key,
 	}
 	if conn := s.registry.createConnection(msg.SessionID, c); !conn.sentCreated() {
-		s.log.Debug("Send new_session_created", zap.Inline(session))
+		log.For(s.log).Debug(ctx, "Send new_session_created", session.logAttr())
 		// Salt is a deterministic bit reinterpretation of the key id bytes;
 		// wraparound is intended, not an overflow bug.
 		salt := int64(binary.LittleEndian.Uint64(key.ID[:])) // #nosec G115
@@ -89,10 +89,10 @@ func (s *Server) handle(req *Request) error {
 		return errors.Wrap(err, "peek id")
 	}
 
-	s.log.Debug("Got request",
-		zap.Inline(req.Session),
-		zap.Int64("msg_id", req.MsgID),
-		zap.String("type", s.types.Get(id)),
+	log.For(s.log).Debug(req.RequestCtx, "Got request",
+		req.Session.logAttr(),
+		log.Int64("msg_id", req.MsgID),
+		log.String("type", s.types.Get(id)),
 	)
 
 	switch id {

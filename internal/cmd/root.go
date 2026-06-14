@@ -11,6 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	"github.com/gotd/log"
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/teled/internal/key"
 	"github.com/gotd/teled/internal/objstore"
 	"github.com/gotd/teled/internal/obs"
@@ -33,7 +36,9 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 			// keys) run without it. app.Run terminates the process itself.
 			setTelemetryDefaults()
 			app.Run(func(ctx context.Context, lg *zap.Logger, t *app.Telemetry) error {
-				a.lg = lg
+				// go-faster/sdk hands us a *zap.Logger; adapt it to the gotd/log
+				// port used throughout teled.
+				a.lg = logzap.New(lg)
 				return a.serve(ctx, obs.Providers{
 					TracerProvider: t.TracerProvider(),
 					MeterProvider:  t.MeterProvider(),
@@ -92,9 +97,9 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 	}
 
 	const dc = 1
-	a.lg.Info("Listening",
-		zap.String("addr", a.Addr()),
-		zap.Int("dc", dc),
+	log.For(a.lg).Info(ctx, "Listening",
+		log.String("addr", a.Addr()),
+		log.Int("dc", dc),
 	)
 	srv := server.New(k, pool, store, server.Options{
 		DC:             dc,

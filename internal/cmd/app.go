@@ -4,12 +4,12 @@ import (
 	"net"
 	"strconv"
 
-	"go.uber.org/zap"
+	"github.com/gotd/log"
 )
 
 // application holds command configuration and shared dependencies.
 type application struct {
-	lg *zap.Logger
+	lg log.Logger
 
 	Host           string
 	Port           int

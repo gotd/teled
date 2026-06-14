@@ -57,11 +57,11 @@ func newTestEnv(t *testing.T, ctx context.Context, g *tdsync.CancellableGroup) *
 
 	store, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
-	handler := New(log.Named("rpc"), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
+	handler := New(logzap.New(log.Named("rpc")), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool),
-		Logger: log.Named("server"),
+		Logger: logzap.New(log.Named("server")),
 	})
 	g.Go(func(ctx context.Context) error { return srv.Serve(ctx, transport.ListenCodec(nil, ln)) })
 
