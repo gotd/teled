@@ -358,6 +358,32 @@ func TestDBSearchUsers(t *testing.T) {
 	require.Empty(t, found)
 }
 
+func TestDBReadOutbox(t *testing.T) {
+	ctx := context.Background()
+	d := memory.NewDB()
+
+	alice, _ := d.CreateUser(ctx, "+1", "Alice", "")
+	bob, _ := d.CreateUser(ctx, "+2", "Bob", "")
+
+	sent, err := d.SendMessage(ctx, alice.ID, bob.ID, "hi bob", 1, 0)
+	require.NoError(t, err)
+
+	// Before Bob reads: Alice's dialog shows no outbox read.
+	dlgs, err := d.GetDialogs(ctx, alice.ID, 10)
+	require.NoError(t, err)
+	require.Len(t, dlgs, 1)
+	require.Zero(t, dlgs[0].ReadOutboxMaxID)
+
+	// Bob reads Alice's message.
+	_, err = d.ReadHistory(ctx, bob.ID, alice.ID, sent.RecipientLocalID)
+	require.NoError(t, err)
+
+	// Now Alice's dialog reports the peer read up to her message.
+	dlgs, err = d.GetDialogs(ctx, alice.ID, 10)
+	require.NoError(t, err)
+	require.Equal(t, sent.SenderLocalID, dlgs[0].ReadOutboxMaxID)
+}
+
 func TestDBContacts(t *testing.T) {
 	ctx := context.Background()
 	d := memory.NewDB()

@@ -18,11 +18,12 @@ type Message struct {
 
 // Dialog is one conversation in an account's dialog list.
 type Dialog struct {
-	PeerUserID     int64
-	TopMessageID   int64
-	ReadInboxMaxID int64
-	UnreadCount    int
-	Draft          *Draft // unsent draft for this conversation, nil when none
+	PeerUserID      int64
+	TopMessageID    int64
+	ReadInboxMaxID  int64 // max incoming id the owner has read
+	ReadOutboxMaxID int64 // max of the owner's outgoing ids the peer has read
+	UnreadCount     int
+	Draft           *Draft // unsent draft for this conversation, nil when none
 }
 
 // Draft is a saved, unsent message for a conversation.

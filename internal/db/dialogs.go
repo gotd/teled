@@ -15,12 +15,16 @@ func (db *DB) GetDialogs(ctx context.Context, self int64, limit int) ([]teled.Di
 SELECT peer,
        MAX(message_id) AS top,
        COUNT(*) FILTER (WHERE unread AND NOT out) AS unread,
-       COALESCE(MAX(message_id) FILTER (WHERE NOT out AND NOT unread), 0) AS read_inbox
+       COALESCE(MAX(message_id) FILTER (WHERE NOT out AND NOT unread), 0) AS read_inbox,
+       COALESCE(MAX(message_id) FILTER (WHERE out AND peer_read), 0) AS read_outbox
 FROM (
     SELECT r.message_id, r.out, r.unread,
-           CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS peer
+           CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END AS peer,
+           (pr.global_id IS NOT NULL AND NOT pr.unread) AS peer_read
     FROM message_refs r
     JOIN messages m ON m.global_id = r.global_id
+    LEFT JOIN message_refs pr ON pr.global_id = r.global_id AND NOT pr.out
+         AND pr.user_id = (CASE WHEN m.from_user_id = $1 THEN m.peer_user_id ELSE m.from_user_id END)
     WHERE r.user_id = $1 AND NOT m.deleted
 ) s
 GROUP BY peer
@@ -37,7 +41,7 @@ LIMIT ` + strconv.Itoa(limit)
 
 	for rows.Next() {
 		var d teled.Dialog
-		if err := rows.Scan(&d.PeerUserID, &d.TopMessageID, &d.UnreadCount, &d.ReadInboxMaxID); err != nil {
+		if err := rows.Scan(&d.PeerUserID, &d.TopMessageID, &d.UnreadCount, &d.ReadInboxMaxID, &d.ReadOutboxMaxID); err != nil {
 			return nil, errors.Wrap(err, "scan")
 		}
 

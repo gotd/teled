@@ -69,5 +69,23 @@ func TestReadReceipt(t *testing.T) {
 		}
 
 		require.Equal(t, sentID, maxID, "sender should see its message read up to sentID")
+
+		// On reload, getDialogs persists the outbox read pointer, so the read
+		// double-check survives a refresh.
+		dlgs, err := api.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerEmpty{}})
+		require.NoError(t, err)
+
+		var found bool
+
+		for _, dlg := range dlgs.(*tg.MessagesDialogs).Dialogs {
+			dd := dlg.(*tg.Dialog)
+			if dd.Peer.(*tg.PeerUser).UserID == userB.ID {
+				require.Equal(t, sentID, dd.ReadOutboxMaxID)
+
+				found = true
+			}
+		}
+
+		require.True(t, found)
 	})
 }

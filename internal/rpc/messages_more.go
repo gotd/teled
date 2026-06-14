@@ -69,10 +69,11 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 		}
 
 		d := &tg.Dialog{
-			Peer:           &tg.PeerUser{UserID: dl.PeerUserID},
-			TopMessage:     int(dl.TopMessageID),
-			ReadInboxMaxID: int(dl.ReadInboxMaxID),
-			UnreadCount:    dl.UnreadCount,
+			Peer:            &tg.PeerUser{UserID: dl.PeerUserID},
+			TopMessage:      int(dl.TopMessageID),
+			ReadInboxMaxID:  int(dl.ReadInboxMaxID),
+			ReadOutboxMaxID: int(dl.ReadOutboxMaxID),
+			UnreadCount:     dl.UnreadCount,
 		}
 
 		if dr, ok := draftByPeer[dl.PeerUserID]; ok {
@@ -166,10 +167,11 @@ func (h *Handler) messagesGetPeerDialogs(ctx context.Context, peers []tg.InputDi
 		dl := byPeer[peer.ID] // zero-valued when the conversation has no messages
 
 		d := &tg.Dialog{
-			Peer:           &tg.PeerUser{UserID: peer.ID},
-			TopMessage:     int(dl.TopMessageID),
-			ReadInboxMaxID: int(dl.ReadInboxMaxID),
-			UnreadCount:    dl.UnreadCount,
+			Peer:            &tg.PeerUser{UserID: peer.ID},
+			TopMessage:      int(dl.TopMessageID),
+			ReadInboxMaxID:  int(dl.ReadInboxMaxID),
+			ReadOutboxMaxID: int(dl.ReadOutboxMaxID),
+			UnreadCount:     dl.UnreadCount,
 		}
 
 		if dr, ok := draftByPeer[peer.ID]; ok {

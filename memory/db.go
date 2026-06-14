@@ -896,6 +896,18 @@ func (d *DB) GetDialogs(_ context.Context, self int64, limit int) ([]teled.Dialo
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// peerReadGlobal reports whether peerID has read the message with globalID
+	// (their incoming copy is no longer unread).
+	peerReadGlobal := func(peerID, globalID int64) bool {
+		for _, pr := range d.refs[peerID] {
+			if pr.globalID == globalID {
+				return !pr.out && !pr.unread
+			}
+		}
+
+		return false
+	}
+
 	byPeer := make(map[int64]*teled.Dialog)
 
 	for _, r := range d.refs[self] {
@@ -922,6 +934,10 @@ func (d *DB) GetDialogs(_ context.Context, self int64, limit int) ([]teled.Dialo
 
 		if !r.out && !r.unread && r.localID > dl.ReadInboxMaxID {
 			dl.ReadInboxMaxID = r.localID
+		}
+
+		if r.out && r.localID > dl.ReadOutboxMaxID && peerReadGlobal(peer, r.globalID) {
+			dl.ReadOutboxMaxID = r.localID
 		}
 	}
 
