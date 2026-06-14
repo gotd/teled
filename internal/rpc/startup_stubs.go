@@ -77,6 +77,10 @@ func (h *Handler) paymentsGetStarGiftActiveAuctions(context.Context, int64) (tg.
 	return &tg.PaymentsStarGiftActiveAuctions{}, nil
 }
 
+func (h *Handler) paymentsGetSavedStarGifts(context.Context, *tg.PaymentsGetSavedStarGiftsRequest) (*tg.PaymentsSavedStarGifts, error) {
+	return &tg.PaymentsSavedStarGifts{}, nil
+}
+
 // Colors / themes.
 
 func (h *Handler) helpGetPeerColors(context.Context, int) (tg.HelpPeerColorsClass, error) {

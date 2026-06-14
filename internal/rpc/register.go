@@ -104,6 +104,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetQuickReplies(h.messagesGetQuickReplies)
 	d.OnAicomposeGetTones(h.aicomposeGetTones)
 	d.OnPaymentsGetStarGiftActiveAuctions(h.paymentsGetStarGiftActiveAuctions)
+	d.OnPaymentsGetSavedStarGifts(h.paymentsGetSavedStarGifts)
 	d.OnHelpGetPeerColors(h.helpGetPeerColors)
 	d.OnHelpGetPeerProfileColors(h.helpGetPeerProfileColors)
 	d.OnAccountGetThemes(h.accountGetThemes)
