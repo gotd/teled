@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/session"
@@ -95,7 +97,7 @@ func TestServerEndToEnd(t *testing.T) {
 			DCList:         dcs.List{Options: config.DCOptions},
 			Resolver:       dcs.Plain(dcs.PlainOptions{}),
 			NoUpdates:      true,
-			Logger:         log.Named("client"),
+			Logger:         logzap.New(log.Named("client")),
 			SessionStorage: &session.StorageMemory{},
 			RetryInterval:  100 * time.Millisecond,
 		})

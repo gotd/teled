@@ -5,6 +5,8 @@ import (
 
 	"github.com/go-faster/errors"
 
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/td/bin"
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/exchange"
@@ -45,7 +47,7 @@ func (e exchangeConn) Recv(ctx context.Context, b *bin.Buffer) error {
 func (s *Server) exchange(ctx context.Context, conn transport.Conn) (crypto.AuthKey, error) {
 	r, err := exchange.NewExchanger(conn, s.dcID).
 		WithClock(s.clock).
-		WithLogger(s.log.Named("exchange")).
+		WithLogger(logzap.New(s.log.Named("exchange"))).
 		WithRand(s.cipher.Rand()).
 		Server(s.key).
 		Run(ctx)

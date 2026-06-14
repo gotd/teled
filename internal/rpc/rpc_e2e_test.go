@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/tdsync"
@@ -75,7 +77,7 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 			DCList:         dcs.List{Options: []tg.DCOption{{ID: dcID, IPAddress: addr.IP.String(), Port: addr.Port}}},
 			Resolver:       dcs.Plain(dcs.PlainOptions{}),
 			NoUpdates:      true,
-			Logger:         log.Named("client"),
+			Logger:         logzap.New(log.Named("client")),
 			SessionStorage: &session.StorageMemory{},
 			RetryInterval:  100 * time.Millisecond,
 		})

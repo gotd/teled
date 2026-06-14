@@ -26,6 +26,8 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
@@ -135,7 +137,7 @@ func (s *Server) Client(storage session.Storage) *telegram.Client {
 		DCList:         dcs.List{Options: []tg.DCOption{{ID: s.DC, IPAddress: s.Addr.IP.String(), Port: s.Addr.Port}}},
 		Resolver:       dcs.Plain(dcs.PlainOptions{}),
 		NoUpdates:      true,
-		Logger:         zaptest.NewLogger(s.tb, zaptest.Level(zapcore.WarnLevel)).Named("client"),
+		Logger:         logzap.New(zaptest.NewLogger(s.tb, zaptest.Level(zapcore.WarnLevel)).Named("client")),
 		SessionStorage: storage,
 		RetryInterval:  100 * time.Millisecond,
 	})

@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/gotd/log/logzap"
+
 	"github.com/gotd/td/crypto"
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/tdsync"
@@ -75,7 +77,7 @@ func (e *testEnv) runClient(ctx context.Context, t *testing.T, storage session.S
 		DCList:         dcs.List{Options: []tg.DCOption{{ID: e.dc, IPAddress: e.addr.IP.String(), Port: e.addr.Port}}},
 		Resolver:       dcs.Plain(dcs.PlainOptions{}),
 		NoUpdates:      true,
-		Logger:         zaptest.NewLogger(t).Named("client"),
+		Logger:         logzap.New(zaptest.NewLogger(t).Named("client")),
 		SessionStorage: storage,
 		RetryInterval:  100 * time.Millisecond,
 	})
