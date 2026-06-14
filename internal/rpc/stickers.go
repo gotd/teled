@@ -13,3 +13,7 @@ import (
 func (h *Handler) messagesGetAllStickers(context.Context, int64) (tg.MessagesAllStickersClass, error) {
 	return &tg.MessagesAllStickersNotModified{}, nil
 }
+
+func (h *Handler) messagesGetEmojiStickers(context.Context, int64) (tg.MessagesAllStickersClass, error) {
+	return &tg.MessagesAllStickersNotModified{}, nil
+}

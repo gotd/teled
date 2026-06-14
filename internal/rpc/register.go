@@ -61,6 +61,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetPinnedDialogs(h.messagesGetPinnedDialogs)
 	d.OnMessagesGetStickers(h.messagesGetStickers)
 	d.OnMessagesGetAllStickers(h.messagesGetAllStickers)
+	d.OnMessagesGetEmojiStickers(h.messagesGetEmojiStickers)
 	d.OnMessagesGetPeerDialogs(h.messagesGetPeerDialogs)
 
 	// Updates (stubs until M4).
