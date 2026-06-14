@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-faster/errors"
 
@@ -10,6 +11,17 @@ import (
 
 	"github.com/gotd/teled"
 )
+
+// userStatus returns the presence status for a user. UserStatusEmpty renders in
+// clients as "last seen a long time ago"; instead the caller (self) is reported
+// online, and everyone else as seen recently.
+func userStatus(self bool) tg.UserStatusClass {
+	if self {
+		return &tg.UserStatusOnline{Expires: int(time.Now().Add(5 * time.Minute).Unix())}
+	}
+
+	return &tg.UserStatusRecently{}
+}
 
 // toTGUser maps a stored user to its tg.User wire form.
 func toTGUser(u teled.User, self bool) *tg.User {
@@ -20,7 +32,7 @@ func toTGUser(u teled.User, self bool) *tg.User {
 		LastName:   u.LastName,
 		Self:       self,
 		Photo:      &tg.UserProfilePhotoEmpty{},
-		Status:     &tg.UserStatusEmpty{},
+		Status:     userStatus(self),
 	}
 	if u.Username != "" {
 		user.Username = u.Username
