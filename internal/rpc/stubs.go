@@ -139,10 +139,6 @@ func (h *Handler) messagesGetStickers(context.Context, *tg.MessagesGetStickersRe
 	return &tg.MessagesStickers{Hash: 1337}, nil
 }
 
-func (h *Handler) messagesGetPeerDialogs(context.Context, []tg.InputDialogPeerClass) (*tg.MessagesPeerDialogs, error) {
-	return &tg.MessagesPeerDialogs{}, nil
-}
-
 func (h *Handler) channelsGetMessages(context.Context, *tg.ChannelsGetMessagesRequest) (tg.MessagesMessagesClass, error) {
 	return &tg.MessagesChannelMessages{}, nil
 }

@@ -113,6 +113,92 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 	return &tg.MessagesDialogs{Dialogs: outDialogs, Messages: messages, Users: users}, nil
 }
 
+// messagesGetPeerDialogs returns dialog entries (read state, top message,
+// draft) for specific peers. Clients call this to refresh the unread count
+// after reading a chat (tdesktop's requestDialogEntry), so it must report the
+// real read state — an empty reply leaves the unread badge stuck.
+func (h *Handler) messagesGetPeerDialogs(ctx context.Context, peers []tg.InputDialogPeerClass) (*tg.MessagesPeerDialogs, error) {
+	caller, err := h.requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dialogs, err := h.db.GetDialogs(ctx, caller.ID, dialogsDefaultLimit)
+	if err != nil {
+		return nil, h.internal(ctx, "get dialogs", err)
+	}
+
+	byPeer := make(map[int64]teled.Dialog, len(dialogs))
+	for _, d := range dialogs {
+		byPeer[d.PeerUserID] = d
+	}
+
+	drafts, err := h.db.Drafts(ctx, caller.ID)
+	if err != nil {
+		return nil, h.internal(ctx, "dialog drafts", err)
+	}
+
+	draftByPeer := make(map[int64]teled.Draft, len(drafts))
+	for _, d := range drafts {
+		draftByPeer[d.PeerUserID] = d
+	}
+
+	st, err := h.db.GetState(ctx, caller.ID)
+	if err != nil {
+		return nil, h.internal(ctx, "get state", err)
+	}
+
+	out := &tg.MessagesPeerDialogs{State: *tgState(st)}
+	users := []tg.UserClass{h.tgUser(caller, true)}
+	seen := map[int64]bool{caller.ID: true}
+
+	for _, p := range peers {
+		dp, ok := p.(*tg.InputDialogPeer)
+		if !ok {
+			continue
+		}
+
+		peer, err := h.resolvePeerUser(ctx, caller, dp.Peer)
+		if err != nil {
+			continue
+		}
+
+		dl := byPeer[peer.ID] // zero-valued when the conversation has no messages
+
+		d := &tg.Dialog{
+			Peer:           &tg.PeerUser{UserID: peer.ID},
+			TopMessage:     int(dl.TopMessageID),
+			ReadInboxMaxID: int(dl.ReadInboxMaxID),
+			UnreadCount:    dl.UnreadCount,
+		}
+
+		if dr, ok := draftByPeer[peer.ID]; ok {
+			d.Draft = draftMessage(dr)
+		}
+
+		d.SetFlags()
+		out.Dialogs = append(out.Dialogs, d)
+
+		top, err := h.db.GetHistory(ctx, caller.ID, peer.ID, 0, 1)
+		if err != nil {
+			return nil, h.internal(ctx, "dialog top", err)
+		}
+
+		if len(top) > 0 {
+			out.Messages = append(out.Messages, dmMessage(top[0]))
+		}
+
+		if !seen[peer.ID] {
+			users = append(users, h.tgUser(peer, false))
+			seen[peer.ID] = true
+		}
+	}
+
+	out.Users = users
+
+	return out, nil
+}
+
 // messagesReadHistory marks incoming messages from a peer as read.
 func (h *Handler) messagesReadHistory(ctx context.Context, req *tg.MessagesReadHistoryRequest) (*tg.MessagesAffectedMessages, error) {
 	caller, err := h.requireCaller(ctx)

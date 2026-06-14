@@ -345,3 +345,57 @@ func TestUpdatesDifference(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 	}
 }
+
+// TestGetPeerDialogsReadState verifies messages.getPeerDialogs reports the real
+// unread count after a read — the call tdesktop uses to refresh the badge.
+func TestGetPeerDialogsReadState(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	storageA := &session.StorageMemory{}
+	storageB := &session.StorageMemory{}
+
+	var userA, userB *tg.User
+
+	env.runClient(ctx, t, storageB, func(api *tg.Client) { userB = signUp(ctx, t, api, "+13700000001", "Bob") })
+	env.runClient(ctx, t, storageA, func(api *tg.Client) {
+		userA = signUp(ctx, t, api, "+13700000002", "Alice")
+		_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+			Peer: inputPeer(userB), Message: "unread me", RandomID: 0x7e7e,
+		})
+		require.NoError(t, err)
+	})
+
+	env.runClient(ctx, t, storageB, func(api *tg.Client) {
+		ask := func() *tg.Dialog {
+			res, err := api.MessagesGetPeerDialogs(ctx, []tg.InputDialogPeerClass{
+				&tg.InputDialogPeer{Peer: inputPeer(userA)},
+			})
+			require.NoError(t, err)
+
+			pd := res
+			require.Len(t, pd.Dialogs, 1)
+
+			return pd.Dialogs[0].(*tg.Dialog)
+		}
+
+		// Before reading: unread.
+		before := ask()
+		require.Equal(t, 1, before.UnreadCount)
+
+		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userA), Limit: 10})
+		require.NoError(t, err)
+
+		m := hist.(*tg.MessagesMessages).Messages[0].(*tg.Message)
+		_, err = api.MessagesReadHistory(ctx, &tg.MessagesReadHistoryRequest{Peer: inputPeer(userA), MaxID: m.ID})
+		require.NoError(t, err)
+
+		// After reading: getPeerDialogs reports zero unread (badge clears).
+		after := ask()
+		require.Equal(t, 0, after.UnreadCount)
+		require.Equal(t, m.ID, after.ReadInboxMaxID)
+	})
+}
