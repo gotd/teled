@@ -11,13 +11,10 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/gotd/td/transport"
-
 	"github.com/gotd/teled/internal/key"
-	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/objstore"
 	"github.com/gotd/teled/internal/obs"
-	"github.com/gotd/teled/internal/rpc"
+	"github.com/gotd/teled/server"
 )
 
 func newRoot(a *application) *cobra.Command {
@@ -78,7 +75,7 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 		return errors.Wrap(err, "failed to parse private key")
 	}
 
-	keys, database, cleanup, err := a.setupStorage(ctx, providers)
+	pool, cleanup, err := a.setupStorage(ctx, providers)
 	if err != nil {
 		return errors.Wrap(err, "setup storage")
 	}
@@ -95,19 +92,20 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 	}
 
 	const dc = 1
-	opt := mtproto.ServerOptions{
-		DC:        dc,
-		Logger:    a.lg,
-		Keys:      keys,
-		Providers: providers,
-	}
 	a.lg.Info("Listening",
 		zap.String("addr", a.Addr()),
-		zap.Int("dc", opt.DC),
+		zap.Int("dc", dc),
 	)
-	handler := rpc.New(a.lg, database, store, dc, a.Host, a.Port, providers)
-	srv := mtproto.NewServer(mtproto.NewPrivateKey(k), mtproto.UnpackInvoke(handler), opt)
-	return srv.Serve(ctx, transport.Listen(transport.ObfuscatedListener(ln)))
+	srv := server.New(k, pool, store, server.Options{
+		DC:             dc,
+		Host:           a.Host,
+		Port:           a.Port,
+		Logger:         a.lg,
+		Obfuscated:     true,
+		TracerProvider: providers.TracerProvider,
+		MeterProvider:  providers.MeterProvider,
+	})
+	return srv.Serve(ctx, ln)
 }
 
 // setTelemetryDefaults makes telemetry opt-in by defaulting the OTEL exporters

@@ -5,46 +5,46 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"go.uber.org/zap"
 
 	"github.com/gotd/teled/internal/db"
-	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/queue"
 )
 
-// setupStorage initializes persistence and returns the auth-key store plus a
-// cleanup function. With no --postgres-uri it falls back to in-memory keys so
-// the server is runnable standalone (keys are then lost on restart).
-func (a *application) setupStorage(ctx context.Context, providers obs.Providers) (mtproto.KeyStorage, *db.DB, func(), error) {
+// setupStorage initializes persistence and returns the PostgreSQL pool plus a
+// cleanup function. With no --postgres-uri it returns a nil pool so the server
+// runs standalone with in-memory auth keys (lost on restart).
+func (a *application) setupStorage(ctx context.Context, providers obs.Providers) (*pgxpool.Pool, func(), error) {
 	if a.PostgresURI == "" {
 		a.lg.Warn("No --postgres-uri set; auth keys are kept in memory and lost on restart")
-		return mtproto.NewInMemoryKeys(), nil, func() {}, nil
+		return nil, func() {}, nil
 	}
 
 	if err := db.Migrate(a.PostgresURI); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "migrate")
+		return nil, nil, errors.Wrap(err, "migrate")
 	}
 
 	pool, err := db.Open(ctx, a.PostgresURI, providers)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "open database")
+		return nil, nil, errors.Wrap(err, "open database")
 	}
 
 	if err := queue.Migrate(ctx, pool); err != nil {
 		pool.Close()
-		return nil, nil, nil, errors.Wrap(err, "migrate queue")
+		return nil, nil, errors.Wrap(err, "migrate queue")
 	}
 
 	q, err := queue.New(pool, river.NewWorkers())
 	if err != nil {
 		pool.Close()
-		return nil, nil, nil, errors.Wrap(err, "new queue")
+		return nil, nil, errors.Wrap(err, "new queue")
 	}
 	if err := q.Start(ctx); err != nil {
 		pool.Close()
-		return nil, nil, nil, errors.Wrap(err, "start queue")
+		return nil, nil, errors.Wrap(err, "start queue")
 	}
 
 	cleanup := func() {
@@ -57,5 +57,5 @@ func (a *application) setupStorage(ctx context.Context, providers obs.Providers)
 	}
 
 	a.lg.Info("Connected to PostgreSQL")
-	return db.NewKeyStore(pool), db.New(pool), cleanup, nil
+	return pool, cleanup, nil
 }

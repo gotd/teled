@@ -1,4 +1,4 @@
-package rpc
+package e2e
 
 import (
 	"context"
@@ -8,21 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gotd/td/session"
-	"github.com/gotd/td/tdsync"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
 	"github.com/gotd/td/tgerr"
-)
 
-// importBot logs in a bot by token and returns the resolved self user.
-func importBot(ctx context.Context, t *testing.T, api *tg.Client, token string) *tg.User {
-	t.Helper()
-	authResp, err := api.AuthImportBotAuthorization(ctx, &tg.AuthImportBotAuthorizationRequest{
-		APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, BotAuthToken: token,
-	})
-	require.NoError(t, err)
-	return authResp.(*tg.AuthAuthorization).User.(*tg.User)
-}
+	"github.com/gotd/teled/teledtest"
+)
 
 // TestBotImportAuthorizationAndCommands covers the bot lifecycle: token login
 // (auto-provisioning then reuse), self-resolution carrying the Bot flag, and
@@ -30,14 +21,13 @@ func importBot(ctx context.Context, t *testing.T, api *tg.Client, token string) 
 func TestBotImportAuthorizationAndCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	g := tdsync.NewCancellableGroup(ctx)
-	env := newTestEnv(t, ctx, g)
+	srv := teledtest.New(t)
 
 	const token = "424242:secret-bot-token"
 	storage := &session.StorageMemory{}
 	var botID int64
 
-	env.runClient(ctx, t, storage, func(api *tg.Client) {
+	require.NoError(t, srv.Run(ctx, storage, func(api *tg.Client) error {
 		self := importBot(ctx, t, api, token)
 		require.True(t, self.Self)
 		require.True(t, self.Bot)
@@ -83,59 +73,46 @@ func TestBotImportAuthorizationAndCommands(t *testing.T) {
 		cmds, err = api.BotsGetBotCommands(ctx, &tg.BotsGetBotCommandsRequest{Scope: &tg.BotCommandScopeDefault{}})
 		require.NoError(t, err)
 		require.Empty(t, cmds)
-	})
+		return nil
+	}))
 
 	// Re-login with the same token reuses the account (no new bot).
-	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
 		self := importBot(ctx, t, api, token)
 		require.Equal(t, botID, self.ID)
-	})
-
-	g.Cancel()
-	if err := g.Wait(); err != nil {
-		require.ErrorIs(t, err, context.Canceled)
-	}
+		return nil
+	}))
 }
 
 // TestBotImportAuthorizationInvalidToken rejects a token without the
 // "<id>:<secret>" shape.
 func TestBotImportAuthorizationInvalidToken(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	g := tdsync.NewCancellableGroup(ctx)
-	env := newTestEnv(t, ctx, g)
+	srv := teledtest.New(t)
 
-	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
 		_, err := api.AuthImportBotAuthorization(ctx, &tg.AuthImportBotAuthorizationRequest{
 			APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, BotAuthToken: "not-a-valid-token",
 		})
 		require.True(t, tgerr.Is(err, "ACCESS_TOKEN_INVALID"))
-	})
-
-	g.Cancel()
-	if err := g.Wait(); err != nil {
-		require.ErrorIs(t, err, context.Canceled)
-	}
+		return nil
+	}))
 }
 
 // TestBotCommandsRequireBot rejects bot command management from a human account.
 func TestBotCommandsRequireBot(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	g := tdsync.NewCancellableGroup(ctx)
-	env := newTestEnv(t, ctx, g)
+	srv := teledtest.New(t)
 
-	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
 		signUp(ctx, t, api, "+3333333333", "Carol")
 		_, err := api.BotsSetBotCommands(ctx, &tg.BotsSetBotCommandsRequest{
 			Scope:    &tg.BotCommandScopeDefault{},
 			Commands: []tg.BotCommand{{Command: "start", Description: "x"}},
 		})
 		require.True(t, tgerr.Is(err, "USER_BOT_REQUIRED"))
-	})
-
-	g.Cancel()
-	if err := g.Wait(); err != nil {
-		require.ErrorIs(t, err, context.Canceled)
-	}
+		return nil
+	}))
 }
