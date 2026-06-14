@@ -62,7 +62,7 @@ func (h *Handler) helpGetCountriesList(context.Context, *tg.HelpGetCountriesList
 				Name:        "Test",
 				DefaultName: "Test",
 				CountryCodes: []tg.HelpCountryCode{
-					{CountryCode: "99966", Patterns: []string{"X XXXX"}, Prefixes: []string{"+99966", "99966"}},
+					{CountryCode: "99966", Patterns: []string{"X XXXX X XXXX"}, Prefixes: []string{"+99966", "99966"}},
 				},
 			},
 		},
@@ -112,6 +112,14 @@ func (h *Handler) accountGetNotifySettings(context.Context, tg.InputNotifyPeerCl
 
 func (h *Handler) accountGetGlobalPrivacySettings(context.Context) (*tg.GlobalPrivacySettings, error) {
 	return &tg.GlobalPrivacySettings{}, nil
+}
+
+func (h *Handler) accountGetPrivacy(context.Context, tg.InputPrivacyKeyClass) (*tg.AccountPrivacyRules, error) {
+	return &tg.AccountPrivacyRules{}, nil
+}
+
+func (h *Handler) accountGetConnectedBots(context.Context) (*tg.AccountConnectedBots, error) {
+	return &tg.AccountConnectedBots{}, nil
 }
 
 func (h *Handler) messagesGetDialogFilters(context.Context) (*tg.MessagesDialogFilters, error) {

@@ -40,6 +40,10 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	// Account.
 	d.OnAccountGetNotifySettings(h.accountGetNotifySettings)
 	d.OnAccountGetGlobalPrivacySettings(h.accountGetGlobalPrivacySettings)
+	d.OnAccountGetPrivacy(h.accountGetPrivacy)
+	d.OnAccountGetConnectedBots(h.accountGetConnectedBots)
+	d.OnAccountCheckUsername(h.accountCheckUsername)
+	d.OnAccountUpdateUsername(h.accountUpdateUsername)
 
 	// Messages.
 	d.OnMessagesSendMessage(h.messagesSendMessage)

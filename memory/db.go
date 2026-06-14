@@ -307,6 +307,26 @@ func (d *DB) UserByUsername(_ context.Context, username string) (*teled.User, bo
 	return nil, false, nil
 }
 
+// SetUsername sets (or clears, when empty) a user's username and returns the
+// updated account. It rejects a username already taken by another user.
+func (d *DB) SetUsername(_ context.Context, userID int64, username string) (teled.User, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	mu, ok := d.users[userID]
+	if !ok {
+		return teled.User{}, errors.Errorf("user %d not found", userID)
+	}
+	if username != "" {
+		for id, other := range d.users {
+			if id != userID && other.u.Username == username {
+				return teled.User{}, errors.Errorf("username %q already exists", username)
+			}
+		}
+	}
+	mu.u.Username = username
+	return *userCopy(mu.u), nil
+}
+
 // UsersByIDs returns the users with the given ids, in arbitrary order.
 func (d *DB) UsersByIDs(_ context.Context, ids []int64) ([]teled.User, error) {
 	d.mu.Lock()

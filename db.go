@@ -93,6 +93,10 @@ type DB interface {
 	UserByPhone(ctx context.Context, phone string) (*User, bool, error)
 	// UserByUsername returns a user by username.
 	UserByUsername(ctx context.Context, username string) (*User, bool, error)
+	// SetUsername sets (or, when username is empty, clears) a user's username and
+	// returns the updated account. Callers are responsible for enforcing
+	// uniqueness; backends may also reject a clash via a constraint error.
+	SetUsername(ctx context.Context, userID int64, username string) (User, error)
 	// UsersByIDs returns the users with the given ids, in arbitrary order.
 	UsersByIDs(ctx context.Context, ids []int64) ([]User, error)
 

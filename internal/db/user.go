@@ -204,6 +204,26 @@ func (db *DB) UserByUsername(ctx context.Context, username string) (*teled.User,
 	return db.userBy(ctx, "username = ?", username)
 }
 
+// SetUsername sets (or clears, when empty) a user's username. An empty username
+// is stored as NULL so it does not collide under the UNIQUE constraint.
+func (db *DB) SetUsername(ctx context.Context, userID int64, username string) (teled.User, error) {
+	var arg any
+	if username != "" {
+		arg = username
+	}
+	var u teled.User
+	if err := scanUser(db.pool.QueryRow(ctx,
+		`UPDATE users SET username = $1 WHERE id = $2 RETURNING `+strings.Join(userColumns, ", "),
+		arg, userID,
+	), &u); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return teled.User{}, gerrors.Errorf("user %d not found", userID)
+		}
+		return teled.User{}, gerrors.Wrap(err, "update")
+	}
+	return u, nil
+}
+
 // UsersByIDs returns the users with the given ids, in arbitrary order.
 func (db *DB) UsersByIDs(ctx context.Context, ids []int64) ([]teled.User, error) {
 	if len(ids) == 0 {
