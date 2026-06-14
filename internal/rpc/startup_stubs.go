@@ -103,6 +103,10 @@ func (h *Handler) storiesGetStoriesArchive(context.Context, *tg.StoriesGetStorie
 	return &tg.StoriesStories{}, nil
 }
 
+func (h *Handler) storiesGetPinnedStories(context.Context, *tg.StoriesGetPinnedStoriesRequest) (*tg.StoriesStories, error) {
+	return &tg.StoriesStories{}, nil
+}
+
 // Dialogs / drafts / search / peers.
 
 func (h *Handler) messagesGetPinnedSavedDialogs(context.Context) (tg.MessagesSavedDialogsClass, error) {

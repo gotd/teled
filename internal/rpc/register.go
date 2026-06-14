@@ -109,6 +109,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnAccountGetThemes(h.accountGetThemes)
 	d.OnStoriesGetAllStories(h.storiesGetAllStories)
 	d.OnStoriesGetStoriesArchive(h.storiesGetStoriesArchive)
+	d.OnStoriesGetPinnedStories(h.storiesGetPinnedStories)
 	d.OnMessagesGetPinnedSavedDialogs(h.messagesGetPinnedSavedDialogs)
 	d.OnMessagesGetSuggestedDialogFilters(h.messagesGetSuggestedDialogFilters)
 	d.OnMessagesGetPeerSettings(h.messagesGetPeerSettings)
