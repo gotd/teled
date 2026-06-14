@@ -109,7 +109,9 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 			self, ok := auth.User.(*tg.User)
 			require.True(t, ok)
 			require.True(t, self.Self)
-			require.Equal(t, phone, self.Phone)
+			// The server normalizes phone numbers to bare digits (no "+"), as
+			// real Telegram does, so the stored/returned value drops the "+".
+			require.Equal(t, normalizePhone(phone), self.Phone)
 			require.Equal(t, "Ada", self.FirstName)
 
 			// users.getUsers(self) now resolves after binding.
@@ -126,8 +128,8 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 
 	require.NoError(t, g.Wait())
 
-	// Account persisted.
-	u, ok, err := database.UserByPhone(ctx, phone)
+	// Account persisted under the normalized phone.
+	u, ok, err := database.UserByPhone(ctx, normalizePhone(phone))
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "Ada", u.FirstName)

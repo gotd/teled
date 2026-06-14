@@ -25,3 +25,28 @@ func TestPhoneCode(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizePhone(t *testing.T) {
+	for _, tt := range []struct {
+		phone string
+		want  string
+	}{
+		// Display-formatted strings collapse to bare digits.
+		{"+ 9 996610000", "9996610000"},
+		{"+9996610000", "9996610000"},
+		{"9996610000", "9996610000"},
+		{"+99966 1 0000", "9996610000"},
+		{"+1 (337) 55-69", "13375569"}, // punctuation and spaces stripped
+		{"", ""},
+	} {
+		if got := normalizePhone(tt.phone); got != tt.want {
+			t.Errorf("normalizePhone(%q) = %q, want %q", tt.phone, got, tt.want)
+		}
+	}
+
+	// A formatted test number must normalize so that test-account detection and
+	// code derivation see the raw digits (regression for PHONE_CODE_EXPIRED).
+	if got := phoneCode(normalizePhone("+ 9 996610000")); got != "11111" {
+		t.Errorf("phoneCode(normalizePhone(...)) = %q, want %q", got, "11111")
+	}
+}
