@@ -24,13 +24,14 @@ var userColumns = []string{
 	"first_name",
 	"last_name",
 	"about",
+	"is_bot",
 	"created_at",
 }
 
 func scanUser(row pgx.Row, u *teled.User) error {
 	return row.Scan(
 		&u.ID, &u.AccessHash, &u.Phone, &u.Username,
-		&u.FirstName, &u.LastName, &u.About, &u.CreatedAt,
+		&u.FirstName, &u.LastName, &u.About, &u.IsBot, &u.CreatedAt,
 	)
 }
 
@@ -62,6 +63,37 @@ func (db *DB) CreateUser(ctx context.Context, phone, firstName, lastName string)
 		return teled.User{}, gerrors.Wrap(err, "insert")
 	}
 	return u, nil
+}
+
+// CreateBot inserts a new bot account authenticated by token. username may be
+// empty.
+func (db *DB) CreateBot(ctx context.Context, token, username, firstName string) (teled.User, error) {
+	cols := []string{"access_hash", "bot_token", "first_name", "is_bot"}
+	vals := []any{genAccessHash(), token, firstName, true}
+	if username != "" {
+		cols = append(cols, "username")
+		vals = append(vals, username)
+	}
+	q := psql.Insert("users").
+		Columns(cols...).
+		Values(vals...).
+		Suffix("RETURNING " + strings.Join(userColumns, ", "))
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return teled.User{}, gerrors.Wrap(err, "build query")
+	}
+
+	var u teled.User
+	if err := scanUser(db.pool.QueryRow(ctx, sql, args...), &u); err != nil {
+		return teled.User{}, gerrors.Wrap(err, "insert")
+	}
+	return u, nil
+}
+
+// BotByToken returns the bot account holding token, if any.
+func (db *DB) BotByToken(ctx context.Context, token string) (*teled.User, bool, error) {
+	return db.userBy(ctx, "bot_token = ?", token)
 }
 
 func (db *DB) userBy(ctx context.Context, where string, arg any) (*teled.User, bool, error) {

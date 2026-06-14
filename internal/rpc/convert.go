@@ -28,6 +28,10 @@ func toTGUser(u teled.User, self bool) *tg.User {
 	if u.Phone != "" {
 		user.Phone = u.Phone
 	}
+	if u.IsBot {
+		user.Bot = true
+		user.BotInfoVersion = 1
+	}
 	user.SetFlags()
 	return user
 }
