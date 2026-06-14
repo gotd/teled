@@ -33,3 +33,7 @@ func (h *Handler) messagesGetFeaturedEmojiStickers(context.Context, int64) (tg.M
 func (h *Handler) messagesGetRecentStickers(context.Context, *tg.MessagesGetRecentStickersRequest) (tg.MessagesRecentStickersClass, error) {
 	return &tg.MessagesRecentStickersNotModified{}, nil
 }
+
+func (h *Handler) messagesGetSavedGifs(context.Context, int64) (tg.MessagesSavedGifsClass, error) {
+	return &tg.MessagesSavedGifsNotModified{}, nil
+}
