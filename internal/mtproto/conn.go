@@ -98,12 +98,17 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 		if err != nil {
 			var exchangeErr *exchange.ServerExchangeError
 			if errors.As(err, &exchangeErr) {
+				log.For(s.log).Warn(ctx, "Key exchange failed; sending proto error",
+					log.Int("code", int(exchangeErr.Code)), log.Error(err))
+
 				if sendErr := s.sendProtoError(ctx, c, exchangeErr.Code); sendErr != nil {
 					return errors.Wrapf(sendErr, "send proto error %v", exchangeErr.Code)
 				}
 
 				return nil
 			}
+
+			log.For(s.log).Warn(ctx, "Key exchange failed", log.Error(err))
 
 			return errors.Wrap(err, "key exchange failed")
 		}
