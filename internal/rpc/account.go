@@ -9,6 +9,37 @@ import (
 	"github.com/gotd/td/tgerr"
 )
 
+// accountUpdateProfile persists the caller's first/last name and about text.
+// Only the fields present in the request are changed.
+func (h *Handler) accountUpdateProfile(ctx context.Context, req *tg.AccountUpdateProfileRequest) (tg.UserClass, error) {
+	caller, err := h.requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var first, last, about *string
+	if v, ok := req.GetFirstName(); ok {
+		first = &v
+	}
+
+	if v, ok := req.GetLastName(); ok {
+		last = &v
+	}
+
+	if v, ok := req.GetAbout(); ok {
+		about = &v
+	}
+
+	updated, err := h.db.SetProfile(ctx, caller.ID, first, last, about)
+	if err != nil {
+		return nil, h.internal(ctx, "update profile", err)
+	}
+
+	log.For(h.lg).Debug(ctx, "account.updateProfile", log.Int64("user_id", caller.ID))
+
+	return h.tgUser(updated, true), nil
+}
+
 // usernameRe is a lenient public-username validator: 5-32 characters of
 // letters, digits and underscores, starting with a letter. It approximates
 // Telegram's rules closely enough for the test server.

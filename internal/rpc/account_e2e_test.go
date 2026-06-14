@@ -70,3 +70,30 @@ func TestAccountUsername(t *testing.T) {
 		require.Equal(t, userA.ID, resolved.Peer.(*tg.PeerUser).UserID)
 	})
 }
+
+// TestAccountUpdateProfile verifies profile edits persist and are reflected by
+// getFullUser.
+func TestAccountUpdateProfile(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+		self := signUp(ctx, t, api, "+15559990001", "Grace")
+
+		updated, err := api.AccountUpdateProfile(ctx, &tg.AccountUpdateProfileRequest{
+			FirstName: "Grace", LastName: "Hopper", About: "compiler pioneer",
+		})
+		require.NoError(t, err)
+		require.Equal(t, "Hopper", updated.(*tg.User).LastName)
+
+		// Persisted: a fresh full-user fetch reflects the new name and about.
+		full, err := api.UsersGetFullUser(ctx, &tg.InputUserSelf{})
+		require.NoError(t, err)
+		require.Equal(t, "compiler pioneer", full.FullUser.About)
+		require.Equal(t, "Hopper", full.Users[0].(*tg.User).LastName)
+		require.Equal(t, self.ID, full.Users[0].(*tg.User).ID)
+	})
+}

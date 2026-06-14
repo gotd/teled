@@ -349,6 +349,32 @@ func (d *DB) UserByUsername(_ context.Context, username string) (*teled.User, bo
 	return nil, false, nil
 }
 
+// SetProfile updates the provided profile fields and returns the updated user.
+// A nil pointer leaves that field unchanged.
+func (d *DB) SetProfile(_ context.Context, userID int64, firstName, lastName, about *string) (teled.User, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	mu, ok := d.users[userID]
+	if !ok {
+		return teled.User{}, errors.Errorf("user %d not found", userID)
+	}
+
+	if firstName != nil {
+		mu.u.FirstName = *firstName
+	}
+
+	if lastName != nil {
+		mu.u.LastName = *lastName
+	}
+
+	if about != nil {
+		mu.u.About = *about
+	}
+
+	return *userCopy(mu.u), nil
+}
+
 // SearchUsers returns users matching query by username prefix or name
 // substring, case-insensitively, ordered by id, up to limit.
 func (d *DB) SearchUsers(_ context.Context, query string, limit int) ([]teled.User, error) {

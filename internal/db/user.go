@@ -224,6 +224,54 @@ func (db *DB) UserByUsername(ctx context.Context, username string) (*teled.User,
 	return db.userBy(ctx, "username = ?", username)
 }
 
+// SetProfile updates the provided profile fields and returns the updated user.
+// A nil pointer leaves that field unchanged.
+func (db *DB) SetProfile(ctx context.Context, userID int64, firstName, lastName, about *string) (teled.User, error) {
+	if firstName == nil && lastName == nil && about == nil {
+		u, ok, err := db.UserByID(ctx, userID)
+		if err != nil {
+			return teled.User{}, err
+		}
+
+		if !ok {
+			return teled.User{}, gerrors.Errorf("user %d not found", userID)
+		}
+
+		return *u, nil
+	}
+
+	q := psql.Update("users").Where("id = ?", userID)
+	if firstName != nil {
+		q = q.Set("first_name", *firstName)
+	}
+
+	if lastName != nil {
+		q = q.Set("last_name", *lastName)
+	}
+
+	if about != nil {
+		q = q.Set("about", *about)
+	}
+
+	q = q.Suffix("RETURNING " + strings.Join(userColumns, ", "))
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return teled.User{}, gerrors.Wrap(err, "build query")
+	}
+
+	var u teled.User
+	if err := scanUser(db.pool.QueryRow(ctx, sql, args...), &u); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return teled.User{}, gerrors.Errorf("user %d not found", userID)
+		}
+
+		return teled.User{}, gerrors.Wrap(err, "update")
+	}
+
+	return u, nil
+}
+
 // SearchUsers returns users matching query by username prefix or name
 // substring, case-insensitively, ordered by id, up to limit.
 func (db *DB) SearchUsers(ctx context.Context, query string, limit int) ([]teled.User, error) {

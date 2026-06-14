@@ -19,6 +19,7 @@ import (
 func TestContactsSearchFindsBotFather(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 	env := newTestEnv(t, ctx, g)
 
@@ -29,11 +30,13 @@ func TestContactsSearchFindsBotFather(t *testing.T) {
 		require.NoError(t, err)
 
 		var ids []int64
+
 		for _, u := range found.Users {
 			if uu, ok := u.(*tg.User); ok {
 				ids = append(ids, uu.ID)
 			}
 		}
+
 		require.Contains(t, ids, teled.BotFatherID)
 
 		// Also discoverable by a lowercase prefix.

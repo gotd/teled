@@ -105,6 +105,9 @@ type DB interface {
 	// returns the updated account. Callers are responsible for enforcing
 	// uniqueness; backends may also reject a clash via a constraint error.
 	SetUsername(ctx context.Context, userID int64, username string) (User, error)
+	// SetProfile updates the provided profile fields (a nil pointer leaves that
+	// field unchanged) and returns the updated user.
+	SetProfile(ctx context.Context, userID int64, firstName, lastName, about *string) (User, error)
 	// UsersByIDs returns the users with the given ids, in arbitrary order.
 	UsersByIDs(ctx context.Context, ids []int64) ([]User, error)
 

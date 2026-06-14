@@ -160,14 +160,3 @@ func (h *Handler) accountGetContentSettings(context.Context) (*tg.AccountContent
 func (h *Handler) accountGetContactSignUpNotification(context.Context) (bool, error) {
 	return true, nil
 }
-
-// accountUpdateProfile is a no-op stub: it returns the caller unchanged rather
-// than persisting first/last name or about edits.
-func (h *Handler) accountUpdateProfile(ctx context.Context, _ *tg.AccountUpdateProfileRequest) (tg.UserClass, error) {
-	caller, err := h.requireCaller(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return h.tgUser(caller, true), nil
-}
