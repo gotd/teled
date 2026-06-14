@@ -12,8 +12,10 @@ func TestPhoneCode(t *testing.T) {
 		{"+9996621234", "22222"},
 		{"9996610000", "11111"}, // 99966 + DC 1 + 0000
 		{"9996631111", "33333"},
-		// DC digit out of the 1-3 test range falls back to the dev code.
-		{"9996641234", devPhoneCode},
+		{"9996641234", "44444"},
+		{"9996656617", "55555"}, // DC 5 test account
+		{"9996691234", "99999"},
+		// DC digit 0 is not a test account; falls back to the dev code.
 		{"9996601234", devPhoneCode},
 		// Non-test numbers always get the dev code.
 		{"+19998887766", devPhoneCode},

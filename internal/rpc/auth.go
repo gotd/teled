@@ -21,9 +21,9 @@ const devPhoneCode = "12345"
 const codeTTL = 10 * time.Minute
 
 // testPhoneRe matches Telegram test account numbers of the form 99966XYYYY,
-// where X is the datacenter ID (1-3) and Y is any digit. An optional leading
+// where X is the datacenter ID (1-9) and Y is any digit. An optional leading
 // "+" is tolerated.
-var testPhoneRe = regexp.MustCompile(`^\+?99966([1-3])\d{4}$`)
+var testPhoneRe = regexp.MustCompile(`^\+?99966([1-9])\d{4}$`)
 
 // normalizePhone reduces a phone number to its canonical digits-only form.
 // Clients may submit the same number formatted differently across the login

@@ -97,6 +97,10 @@ func (h *Handler) storiesGetAllStories(context.Context, *tg.StoriesGetAllStories
 	return &tg.StoriesAllStories{State: "0"}, nil
 }
 
+func (h *Handler) storiesGetStoriesArchive(context.Context, *tg.StoriesGetStoriesArchiveRequest) (*tg.StoriesStories, error) {
+	return &tg.StoriesStories{}, nil
+}
+
 // Dialogs / drafts / search / peers.
 
 func (h *Handler) messagesGetPinnedSavedDialogs(context.Context) (tg.MessagesSavedDialogsClass, error) {
