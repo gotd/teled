@@ -2,6 +2,7 @@ package mtproto
 
 import (
 	"context"
+	"encoding/hex"
 
 	"github.com/go-faster/errors"
 
@@ -77,6 +78,9 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 			}
 
 			// Unknown, non-zero key: ask the client to re-run key exchange.
+			log.For(s.log).Warn(ctx, "Auth key not found; sending -404",
+				log.String("key_id", hex.EncodeToString(authKeyID[:])))
+
 			if err := s.sendProtoError(ctx, conn, codec.CodeAuthKeyNotFound); err != nil {
 				return errors.Wrap(err, "send AuthKeyNotFound")
 			}
