@@ -133,6 +133,10 @@ func (h *Handler) messagesGetWebPage(context.Context, *tg.MessagesGetWebPageRequ
 	return &tg.MessagesWebPage{Webpage: &tg.WebPageEmpty{}}, nil
 }
 
+func (h *Handler) messagesGetWebPagePreview(context.Context, *tg.MessagesGetWebPagePreviewRequest) (*tg.MessagesWebPagePreview, error) {
+	return &tg.MessagesWebPagePreview{Media: &tg.MessageMediaEmpty{}}, nil
+}
+
 func (h *Handler) contactsGetTopPeers(context.Context, *tg.ContactsGetTopPeersRequest) (tg.ContactsTopPeersClass, error) {
 	return &tg.ContactsTopPeersNotModified{}, nil
 }

@@ -124,6 +124,10 @@ func dmMessage(m teled.Message) *tg.Message {
 		msg.Media = photoMedia(*m.Media)
 	}
 
+	if ents := messageEntities(m.Text); len(ents) > 0 {
+		msg.Entities = ents
+	}
+
 	msg.SetFlags()
 
 	return msg

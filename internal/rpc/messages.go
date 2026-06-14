@@ -132,6 +132,37 @@ func (h *Handler) messagesGetHistory(ctx context.Context, req *tg.MessagesGetHis
 	}, nil
 }
 
+// messagesGetSavedHistory returns the caller's Saved Messages (self-chat).
+// Modern clients (e.g. Telegram Desktop) load Saved Messages through this RPC
+// rather than messages.getHistory, so without it Saved Messages appears empty
+// even though the messages are persisted.
+func (h *Handler) messagesGetSavedHistory(ctx context.Context, req *tg.MessagesGetSavedHistoryRequest) (tg.MessagesMessagesClass, error) {
+	caller, err := h.requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := req.Limit
+	if limit <= 0 || limit > historyMaxLimit {
+		limit = historyDefaultLimit
+	}
+
+	msgs, err := h.db.GetHistory(ctx, caller.ID, caller.ID, int64(req.OffsetID), limit)
+	if err != nil {
+		return nil, h.internal(ctx, "get saved history", err)
+	}
+
+	out := make([]tg.MessageClass, 0, len(msgs))
+	for i := range msgs {
+		out = append(out, dmMessage(msgs[i]))
+	}
+
+	return &tg.MessagesMessages{
+		Messages: out,
+		Users:    []tg.UserClass{toTGUser(caller, true)},
+	}, nil
+}
+
 // contactsResolveUsername resolves a username to a user peer.
 func (h *Handler) contactsResolveUsername(ctx context.Context, req *tg.ContactsResolveUsernameRequest) (*tg.ContactsResolvedPeer, error) {
 	if err := h.requireDB(); err != nil {
