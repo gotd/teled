@@ -22,6 +22,12 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnAuthLogOut(h.authLogOut)
 	d.OnAuthExportLoginToken(h.authExportLoginToken)
 	d.OnAuthBindTempAuthKey(h.authBindTempAuthKey)
+	d.OnAuthImportBotAuthorization(h.authImportBotAuthorization)
+
+	// Bots.
+	d.OnBotsSetBotCommands(h.botsSetBotCommands)
+	d.OnBotsGetBotCommands(h.botsGetBotCommands)
+	d.OnBotsResetBotCommands(h.botsResetBotCommands)
 
 	// Users (M2, storage-backed).
 	d.OnUsersGetUsers(h.usersGetUsers)

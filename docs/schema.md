@@ -54,8 +54,29 @@ MTProto session ↔ logged-in user binding.
 | last_name   | TEXT        | NOT NULL DEFAULT ''                  |
 | about       | TEXT        | NOT NULL DEFAULT ''                  |
 | is_bot      | BOOLEAN     | NOT NULL DEFAULT FALSE               |
+| bot_token   | TEXT        | UNIQUE (set for bot accounts)        |
 | photo_file_id | BIGINT    | FK → files(id)                       |
 | created_at  | TIMESTAMPTZ | NOT NULL DEFAULT now()               |
+
+Bots log in with `auth.importBotAuthorization`: the first login with a
+well-formed `<id>:<secret>` token auto-provisions a `is_bot` account holding
+that `bot_token`, and later logins reuse it.
+
+## bot_commands
+
+A bot's published command list, per scope and language. `scope` is the
+hex-encoded MTProto `BotCommandScope` so every scope variant (including
+peer-specific ones) maps to a distinct row.
+
+| Column      | Type    | Constraints                                      |
+|-------------|---------|--------------------------------------------------|
+| bot_user_id | BIGINT  | NOT NULL, PK, FK → users(id) ON DELETE CASCADE   |
+| scope       | TEXT    | NOT NULL, PK                                     |
+| lang_code   | TEXT    | NOT NULL DEFAULT '', PK                          |
+| commands    | JSONB   | NOT NULL DEFAULT '[]' ([{command, description}]) |
+
+Managed by `bots.setBotCommands` / `bots.getBotCommands` /
+`bots.resetBotCommands`.
 
 ## phone_codes
 

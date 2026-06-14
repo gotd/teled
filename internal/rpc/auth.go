@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/gotd/td/tg"
@@ -104,6 +105,41 @@ func (h *Handler) authSignUp(ctx context.Context, req *tg.AuthSignUpRequest) (tg
 		return nil, h.internal("bind session", err)
 	}
 	return &tg.AuthAuthorization{User: toTGUser(u, true)}, nil
+}
+
+// authImportBotAuthorization logs in a bot by token. Tokens are not minted by a
+// BotFather here: the first login with a well-formed token auto-provisions the
+// bot account, and subsequent logins reuse it. This mirrors how authSignUp
+// auto-creates user accounts for the test server.
+func (h *Handler) authImportBotAuthorization(
+	ctx context.Context, req *tg.AuthImportBotAuthorizationRequest,
+) (tg.AuthAuthorizationClass, error) {
+	if err := h.requireDB(); err != nil {
+		return nil, err
+	}
+
+	// A valid bot token is "<bot_id>:<secret>"; reject anything else.
+	id, secret, ok := strings.Cut(req.BotAuthToken, ":")
+	if !ok || id == "" || secret == "" {
+		return nil, tgerr.New(400, "ACCESS_TOKEN_INVALID")
+	}
+
+	bot, found, err := h.db.BotByToken(ctx, req.BotAuthToken)
+	if err != nil {
+		return nil, h.internal("lookup bot", err)
+	}
+	if !found {
+		created, err := h.db.CreateBot(ctx, req.BotAuthToken, "", "Bot "+id)
+		if err != nil {
+			return nil, h.internal("create bot", err)
+		}
+		bot = &created
+	}
+
+	if err := h.bindCaller(ctx, bot.ID); err != nil {
+		return nil, h.internal("bind session", err)
+	}
+	return &tg.AuthAuthorization{User: toTGUser(*bot, true)}, nil
 }
 
 // authLogOut unbinds the session's user.
