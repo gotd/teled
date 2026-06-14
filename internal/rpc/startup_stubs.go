@@ -121,10 +121,6 @@ func (h *Handler) messagesGetPeerSettings(context.Context, tg.InputPeerClass) (*
 	return &tg.MessagesPeerSettings{}, nil
 }
 
-func (h *Handler) messagesSearch(context.Context, *tg.MessagesSearchRequest) (tg.MessagesMessagesClass, error) {
-	return &tg.MessagesMessages{}, nil
-}
-
 func (h *Handler) messagesGetScheduledHistory(context.Context, *tg.MessagesGetScheduledHistoryRequest) (tg.MessagesMessagesClass, error) {
 	return &tg.MessagesMessages{}, nil
 }

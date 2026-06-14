@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -204,6 +205,44 @@ func (db *DB) GetHistory(ctx context.Context, self, peer, offsetID int64, limit 
 	q += " ORDER BY r.message_id DESC LIMIT " + strconv.Itoa(limit)
 
 	rows, err := db.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "query")
+	}
+	defer rows.Close()
+
+	var msgs []teled.Message
+
+	for rows.Next() {
+		m, err := scanMessage(rows)
+		if err != nil {
+			return nil, errors.Wrap(err, "scan")
+		}
+
+		msgs = append(msgs, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errors.Wrap(err, "rows")
+	}
+
+	return msgs, nil
+}
+
+// SearchMessages returns the caller's messages with peer whose text matches
+// query (case-insensitive substring), newest first, up to limit.
+func (db *DB) SearchMessages(ctx context.Context, self, peer int64, query string, limit int) ([]teled.Message, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+
+	q := historySelect + " AND m.text ILIKE $3 ORDER BY r.message_id DESC LIMIT " + strconv.Itoa(limit)
+
+	rows, err := db.pool.Query(ctx, q, self, peer, "%"+query+"%")
 	if err != nil {
 		return nil, errors.Wrap(err, "query")
 	}

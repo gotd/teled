@@ -140,6 +140,10 @@ type DB interface {
 	// GetHistory returns up to limit messages between self and peer, newest
 	// first. When offsetID > 0 only messages with a smaller local id return.
 	GetHistory(ctx context.Context, self, peer, offsetID int64, limit int) ([]Message, error)
+	// SearchMessages returns the caller's messages with peer whose text matches
+	// query (case-insensitive substring), newest first, up to limit. An empty
+	// query returns nothing.
+	SearchMessages(ctx context.Context, self, peer int64, query string, limit int) ([]Message, error)
 	// EditMessage updates the text of a message the caller sent, returning the
 	// data needed to emit edit updates to both participants. It returns
 	// ErrMessageID when the message does not exist or the caller is not its

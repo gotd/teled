@@ -682,6 +682,45 @@ func (d *DB) GetHistory(_ context.Context, self, peer, offsetID int64, limit int
 	return msgs, nil
 }
 
+// SearchMessages returns the caller's messages with peer whose text matches
+// query (case-insensitive substring), newest first, up to limit.
+func (d *DB) SearchMessages(_ context.Context, self, peer int64, query string, limit int) ([]teled.Message, error) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return nil, nil
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var msgs []teled.Message
+
+	for _, r := range d.refs[self] {
+		m := d.messages[r.globalID]
+		if m == nil || m.deleted || other(self, m) != peer {
+			continue
+		}
+
+		if !strings.Contains(strings.ToLower(m.text), query) {
+			continue
+		}
+
+		msgs = append(msgs, d.message(self, r, m))
+	}
+
+	sort.Slice(msgs, func(i, j int) bool { return msgs[i].LocalID > msgs[j].LocalID })
+
+	if len(msgs) > limit {
+		msgs = msgs[:limit]
+	}
+
+	return msgs, nil
+}
+
 // MessageByGlobal returns the caller's view of a message by its canonical id.
 func (d *DB) MessageByGlobal(_ context.Context, self, globalID int64) (teled.Message, bool, error) {
 	d.mu.Lock()

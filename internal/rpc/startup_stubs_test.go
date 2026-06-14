@@ -37,7 +37,6 @@ func TestStartupStubsEncode(t *testing.T) {
 		func() (bin.Encoder, error) { return h.storiesGetAllStories(ctx, nil) },
 		func() (bin.Encoder, error) { return h.messagesGetPinnedSavedDialogs(ctx) },
 		func() (bin.Encoder, error) { return h.messagesGetPeerSettings(ctx, nil) },
-		func() (bin.Encoder, error) { return h.messagesSearch(ctx, nil) },
 		func() (bin.Encoder, error) { return h.messagesGetScheduledHistory(ctx, nil) },
 		func() (bin.Encoder, error) { return h.messagesGetWebPage(ctx, nil) },
 		func() (bin.Encoder, error) { return h.contactsGetTopPeers(ctx, nil) },

@@ -76,3 +76,37 @@ func TestSelfChat(t *testing.T) {
 		require.Equal(t, self.ID, d.Dialogs[0].(*tg.Dialog).Peer.(*tg.PeerUser).UserID)
 	})
 }
+
+// TestMessagesSearch verifies in-chat message text search.
+func TestMessagesSearch(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+		_ = signUp(ctx, t, api, "+15551112233", "Searcher")
+
+		for i, text := range []string{"hello world", "grocery list: milk", "hello again"} {
+			_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+				Peer: &tg.InputPeerSelf{}, Message: text, RandomID: int64(100 + i),
+			})
+			require.NoError(t, err)
+		}
+
+		res, err := api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
+			Peer: &tg.InputPeerSelf{}, Q: "hello", Filter: &tg.InputMessagesFilterEmpty{}, Limit: 10,
+		})
+		require.NoError(t, err)
+
+		msgs := res.(*tg.MessagesMessages).Messages
+		require.Len(t, msgs, 2, "two messages contain 'hello'")
+
+		res, err = api.MessagesSearch(ctx, &tg.MessagesSearchRequest{
+			Peer: &tg.InputPeerSelf{}, Q: "milk", Filter: &tg.InputMessagesFilterEmpty{}, Limit: 10,
+		})
+		require.NoError(t, err)
+		require.Len(t, res.(*tg.MessagesMessages).Messages, 1)
+	})
+}

@@ -166,6 +166,40 @@ func (h *Handler) messagesGetSavedHistory(ctx context.Context, req *tg.MessagesG
 	}, nil
 }
 
+// messagesSearch searches the caller's conversation with a peer for messages
+// whose text matches the query.
+func (h *Handler) messagesSearch(ctx context.Context, req *tg.MessagesSearchRequest) (tg.MessagesMessagesClass, error) {
+	caller, err := h.requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peer, err := h.resolvePeerUser(ctx, caller, req.Peer)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := req.Limit
+	if limit <= 0 || limit > historyMaxLimit {
+		limit = historyDefaultLimit
+	}
+
+	msgs, err := h.db.SearchMessages(ctx, caller.ID, peer.ID, req.Q, limit)
+	if err != nil {
+		return nil, h.internal(ctx, "search messages", err)
+	}
+
+	out := make([]tg.MessageClass, 0, len(msgs))
+	for i := range msgs {
+		out = append(out, dmMessage(msgs[i]))
+	}
+
+	return &tg.MessagesMessages{
+		Messages: out,
+		Users:    []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
+	}, nil
+}
+
 // contactsResolveUsername resolves a username to a user peer.
 func (h *Handler) contactsResolveUsername(ctx context.Context, req *tg.ContactsResolveUsernameRequest) (*tg.ContactsResolvedPeer, error) {
 	if err := h.requireDB(); err != nil {
