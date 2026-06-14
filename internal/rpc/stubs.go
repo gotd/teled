@@ -99,10 +99,6 @@ func (h *Handler) authExportLoginToken(context.Context, *tg.AuthExportLoginToken
 	}, nil
 }
 
-func (h *Handler) contactsGetContacts(context.Context, int64) (tg.ContactsContactsClass, error) {
-	return &tg.ContactsContacts{}, nil
-}
-
 func (h *Handler) accountGetNotifySettings(context.Context, tg.InputNotifyPeerClass) (*tg.PeerNotifySettings, error) {
 	return &tg.PeerNotifySettings{}, nil
 }

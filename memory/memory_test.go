@@ -354,6 +354,29 @@ func TestDBSearchUsers(t *testing.T) {
 	require.Empty(t, found)
 }
 
+func TestDBContacts(t *testing.T) {
+	ctx := context.Background()
+	d := memory.NewDB()
+
+	a, _ := d.CreateUser(ctx, "+1", "A", "")
+	b, _ := d.CreateUser(ctx, "+2", "B", "")
+	c, _ := d.CreateUser(ctx, "+3", "C", "")
+
+	require.NoError(t, d.AddContact(ctx, a.ID, b.ID, "Bob", "B"))
+	require.NoError(t, d.AddContact(ctx, a.ID, c.ID, "Cleo", "C"))
+
+	got, err := d.Contacts(ctx, a.ID)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.Equal(t, "Bob", got[0].FirstName)
+
+	require.NoError(t, d.DeleteContacts(ctx, a.ID, []int64{b.ID}))
+	got, err = d.Contacts(ctx, a.ID)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, c.ID, got[0].UserID)
+}
+
 func TestDBDrafts(t *testing.T) {
 	ctx := context.Background()
 	d := memory.NewDB()

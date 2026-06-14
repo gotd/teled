@@ -42,7 +42,8 @@ type DB struct {
 	sessions   map[[8]byte]int64
 	tempKeys   map[[8]byte]memTempKey
 	phoneCodes map[string]memPhoneCode
-	drafts     map[int64]map[int64]teled.Draft // userID -> peerID -> draft
+	drafts     map[int64]map[int64]teled.Draft   // userID -> peerID -> draft
+	contacts   map[int64]map[int64]teled.Contact // ownerID -> contactID -> contact
 	botStates  map[int64]teled.BotFatherState
 	// botCommands is keyed by botID|scope|lang; a present (possibly empty) value
 	// is distinct from an absent key, just as a stored row differs from no row.
@@ -104,6 +105,7 @@ func NewDB() *DB {
 		tempKeys:    make(map[[8]byte]memTempKey),
 		phoneCodes:  make(map[string]memPhoneCode),
 		drafts:      make(map[int64]map[int64]teled.Draft),
+		contacts:    make(map[int64]map[int64]teled.Contact),
 		botStates:   make(map[int64]teled.BotFatherState),
 		botCommands: make(map[string][]teled.BotCommand),
 	}
@@ -682,6 +684,47 @@ func (d *DB) GetHistory(_ context.Context, self, peer, offsetID int64, limit int
 	}
 
 	return msgs, nil
+}
+
+// AddContact saves (or updates) contactID in ownerID's contact list.
+func (d *DB) AddContact(_ context.Context, ownerID, contactID int64, firstName, lastName string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.contacts[ownerID] == nil {
+		d.contacts[ownerID] = map[int64]teled.Contact{}
+	}
+
+	d.contacts[ownerID][contactID] = teled.Contact{UserID: contactID, FirstName: firstName, LastName: lastName}
+
+	return nil
+}
+
+// DeleteContacts removes the given users from ownerID's contact list.
+func (d *DB) DeleteContacts(_ context.Context, ownerID int64, contactIDs []int64) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	for _, id := range contactIDs {
+		delete(d.contacts[ownerID], id)
+	}
+
+	return nil
+}
+
+// Contacts returns ownerID's saved contacts, ordered by user id.
+func (d *DB) Contacts(_ context.Context, ownerID int64) ([]teled.Contact, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var contacts []teled.Contact
+	for _, c := range d.contacts[ownerID] {
+		contacts = append(contacts, c)
+	}
+
+	sort.Slice(contacts, func(i, j int) bool { return contacts[i].UserID < contacts[j].UserID })
+
+	return contacts, nil
 }
 
 // SaveDraft stores (or clears, when blank) the caller's draft for a peer.

@@ -101,6 +101,13 @@ type DB interface {
 	// substring) match query case-insensitively, ordered by id, up to limit. An
 	// empty query returns no users.
 	SearchUsers(ctx context.Context, query string, limit int) ([]User, error)
+	// AddContact saves (or updates) contactID in ownerID's contact list under the
+	// given names.
+	AddContact(ctx context.Context, ownerID, contactID int64, firstName, lastName string) error
+	// DeleteContacts removes the given users from ownerID's contact list.
+	DeleteContacts(ctx context.Context, ownerID int64, contactIDs []int64) error
+	// Contacts returns ownerID's saved contacts, ordered by user id.
+	Contacts(ctx context.Context, ownerID int64) ([]Contact, error)
 	// SetUsername sets (or, when username is empty, clears) a user's username and
 	// returns the updated account. Callers are responsible for enforcing
 	// uniqueness; backends may also reject a clash via a constraint error.

@@ -38,6 +38,9 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnContactsResolveUsername(h.contactsResolveUsername)
 	d.OnContactsGetContacts(h.contactsGetContacts)
 	d.OnContactsSearch(h.contactsSearch)
+	d.OnContactsImportContacts(h.contactsImportContacts)
+	d.OnContactsAddContact(h.contactsAddContact)
+	d.OnContactsDeleteContacts(h.contactsDeleteContacts)
 
 	// Account.
 	d.OnAccountGetNotifySettings(h.accountGetNotifySettings)
