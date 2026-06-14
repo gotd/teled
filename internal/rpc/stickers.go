@@ -29,3 +29,7 @@ func (h *Handler) messagesGetFeaturedStickers(context.Context, int64) (tg.Messag
 func (h *Handler) messagesGetFeaturedEmojiStickers(context.Context, int64) (tg.MessagesFeaturedStickersClass, error) {
 	return &tg.MessagesFeaturedStickersNotModified{}, nil
 }
+
+func (h *Handler) messagesGetRecentStickers(context.Context, *tg.MessagesGetRecentStickersRequest) (tg.MessagesRecentStickersClass, error) {
+	return &tg.MessagesRecentStickersNotModified{}, nil
+}
