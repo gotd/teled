@@ -55,12 +55,29 @@ MTProto session ↔ logged-in user binding.
 | about       | TEXT        | NOT NULL DEFAULT ''                  |
 | is_bot      | BOOLEAN     | NOT NULL DEFAULT FALSE               |
 | bot_token   | TEXT        | UNIQUE (set for bot accounts)        |
+| bot_owner_id | BIGINT     | FK → users(id) (creator, for BotFather bots) |
 | photo_file_id | BIGINT    | FK → files(id)                       |
 | created_at  | TIMESTAMPTZ | NOT NULL DEFAULT now()               |
 
 Bots log in with `auth.importBotAuthorization`: the first login with a
 well-formed `<id>:<secret>` token auto-provisions a `is_bot` account holding
 that `bot_token`, and later logins reuse it.
+
+BotFather (a built-in bot seeded with the fixed id `93372553`) mints tokens
+interactively: DMs to it are answered inline by the server, and the `/newbot`
+flow creates a `bot_owner_id`-owned bot and returns its token.
+
+## botfather_sessions
+
+A user's position in a multi-step BotFather flow (e.g. `/newbot` asks for a
+name, then a username). The row is cleared when the flow completes or is
+canceled.
+
+| Column     | Type   | Constraints                                    |
+|------------|--------|------------------------------------------------|
+| user_id    | BIGINT | PRIMARY KEY, FK → users(id) ON DELETE CASCADE  |
+| step       | TEXT   | NOT NULL (e.g. `newbot_name`, `newbot_username`)|
+| draft_name | TEXT   | NOT NULL DEFAULT '' (pending bot name)         |
 
 ## bot_commands
 

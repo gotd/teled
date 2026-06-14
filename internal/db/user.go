@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"strconv"
 	"strings"
 
 	sq "github.com/Masterminds/squirrel"
@@ -25,13 +26,14 @@ var userColumns = []string{
 	"last_name",
 	"about",
 	"is_bot",
+	"COALESCE(bot_token, '')",
 	"created_at",
 }
 
 func scanUser(row pgx.Row, u *teled.User) error {
 	return row.Scan(
 		&u.ID, &u.AccessHash, &u.Phone, &u.Username,
-		&u.FirstName, &u.LastName, &u.About, &u.IsBot, &u.CreatedAt,
+		&u.FirstName, &u.LastName, &u.About, &u.IsBot, &u.BotToken, &u.CreatedAt,
 	)
 }
 
@@ -94,6 +96,80 @@ func (db *DB) CreateBot(ctx context.Context, token, username, firstName string) 
 // BotByToken returns the bot account holding token, if any.
 func (db *DB) BotByToken(ctx context.Context, token string) (*teled.User, bool, error) {
 	return db.userBy(ctx, "bot_token = ?", token)
+}
+
+// CreateOwnedBot creates a bot owned by ownerID, mints its token as
+// "<bot_id>:<secret>" once the id is known, and returns the persisted account
+// (with BotToken populated).
+func (db *DB) CreateOwnedBot(ctx context.Context, username, firstName string, ownerID int64, secret string) (teled.User, error) {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return teled.User{}, gerrors.Wrap(err, "begin")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var id int64
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO users (access_hash, username, first_name, is_bot, bot_owner_id)
+		 VALUES ($1, $2, $3, true, $4) RETURNING id`,
+		genAccessHash(), username, firstName, ownerID,
+	).Scan(&id); err != nil {
+		return teled.User{}, gerrors.Wrap(err, "insert")
+	}
+
+	token := strconv.FormatInt(id, 10) + ":" + secret
+	var u teled.User
+	if err := scanUser(tx.QueryRow(ctx,
+		`UPDATE users SET bot_token = $1 WHERE id = $2 RETURNING `+strings.Join(userColumns, ", "),
+		token, id,
+	), &u); err != nil {
+		return teled.User{}, gerrors.Wrap(err, "set token")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return teled.User{}, gerrors.Wrap(err, "commit")
+	}
+	return u, nil
+}
+
+// SetBotToken replaces a bot's auth token, e.g. on /revoke. A missing bot is a
+// no-op.
+func (db *DB) SetBotToken(ctx context.Context, botID int64, token string) error {
+	if _, err := db.pool.Exec(ctx,
+		`UPDATE users SET bot_token = $1 WHERE id = $2 AND is_bot`, token, botID,
+	); err != nil {
+		return gerrors.Wrap(err, "update")
+	}
+	return nil
+}
+
+// BotsByOwner returns the bots created by ownerID, oldest first.
+func (db *DB) BotsByOwner(ctx context.Context, ownerID int64) ([]teled.User, error) {
+	q := psql.Select(userColumns...).From("users").
+		Where("bot_owner_id = ?", ownerID).OrderBy("id")
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, gerrors.Wrap(err, "build query")
+	}
+
+	rows, err := db.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, gerrors.Wrap(err, "query")
+	}
+	defer rows.Close()
+
+	var bots []teled.User
+	for rows.Next() {
+		var u teled.User
+		if err := scanUser(rows, &u); err != nil {
+			return nil, gerrors.Wrap(err, "scan")
+		}
+		bots = append(bots, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, gerrors.Wrap(err, "rows")
+	}
+	return bots, nil
 }
 
 func (db *DB) userBy(ctx context.Context, where string, arg any) (*teled.User, bool, error) {
