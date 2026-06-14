@@ -10,6 +10,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnHelpGetAppConfig(h.helpGetAppConfig)
 	d.OnHelpGetCountriesList(h.helpGetCountriesList)
 	d.OnHelpGetTermsOfServiceUpdate(h.helpGetTermsOfServiceUpdate)
+	d.OnHelpGetTimezonesList(h.helpGetTimezonesList)
 	d.OnHelpGetPremiumPromo(h.helpGetPremiumPromo)
 	d.OnHelpGetPromoData(h.helpGetPromoData)
 	d.OnHelpDismissSuggestion(h.helpDismissSuggestion)
