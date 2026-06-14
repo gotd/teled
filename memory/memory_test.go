@@ -329,6 +329,31 @@ func TestDBPhoneCodes(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestDBSearchUsers(t *testing.T) {
+	ctx := context.Background()
+	d := memory.NewDB()
+
+	_, err := d.CreateUser(ctx, "+1", "Alice", "Smith")
+	require.NoError(t, err)
+
+	// BotFather is seeded; it should be found by username prefix.
+	found, err := d.SearchUsers(ctx, "botfa", 10)
+	require.NoError(t, err)
+	require.Len(t, found, 1)
+	require.Equal(t, teled.BotFatherID, found[0].ID)
+
+	// Name substring, case-insensitive.
+	found, err = d.SearchUsers(ctx, "ali", 10)
+	require.NoError(t, err)
+	require.Len(t, found, 1)
+	require.Equal(t, "Alice", found[0].FirstName)
+
+	// Empty query matches nothing.
+	found, err = d.SearchUsers(ctx, "  ", 10)
+	require.NoError(t, err)
+	require.Empty(t, found)
+}
+
 func TestDBTempAuthKeys(t *testing.T) {
 	ctx := context.Background()
 	d := memory.NewDB()

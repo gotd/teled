@@ -97,6 +97,10 @@ type DB interface {
 	UserByPhone(ctx context.Context, phone string) (*User, bool, error)
 	// UserByUsername returns a user by username.
 	UserByUsername(ctx context.Context, username string) (*User, bool, error)
+	// SearchUsers returns users whose username (by prefix) or first/last name (by
+	// substring) match query case-insensitively, ordered by id, up to limit. An
+	// empty query returns no users.
+	SearchUsers(ctx context.Context, query string, limit int) ([]User, error)
 	// SetUsername sets (or, when username is empty, clears) a user's username and
 	// returns the updated account. Callers are responsible for enforcing
 	// uniqueness; backends may also reject a clash via a constraint error.

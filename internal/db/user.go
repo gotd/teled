@@ -224,6 +224,52 @@ func (db *DB) UserByUsername(ctx context.Context, username string) (*teled.User,
 	return db.userBy(ctx, "username = ?", username)
 }
 
+// SearchUsers returns users matching query by username prefix or name
+// substring, case-insensitively, ordered by id, up to limit.
+func (db *DB) SearchUsers(ctx context.Context, query string, limit int) ([]teled.User, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+
+	sub := "%" + query + "%"
+	q := psql.Select(userColumns...).From("users").
+		Where("username ILIKE ? OR first_name ILIKE ? OR last_name ILIKE ?", query+"%", sub, sub).
+		OrderBy("id").Limit(uint64(limit)) // #nosec G115 -- limit is bounded above.
+
+	sql, args, err := q.ToSql()
+	if err != nil {
+		return nil, gerrors.Wrap(err, "build query")
+	}
+
+	rows, err := db.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, gerrors.Wrap(err, "query")
+	}
+	defer rows.Close()
+
+	var users []teled.User
+
+	for rows.Next() {
+		var u teled.User
+		if err := scanUser(rows, &u); err != nil {
+			return nil, gerrors.Wrap(err, "scan")
+		}
+
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, gerrors.Wrap(err, "rows")
+	}
+
+	return users, nil
+}
+
 // SetUsername sets (or clears, when empty) a user's username. An empty username
 // is stored as NULL so it does not collide under the UNIQUE constraint.
 func (db *DB) SetUsername(ctx context.Context, userID int64, username string) (teled.User, error) {

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -346,6 +347,41 @@ func (d *DB) UserByUsername(_ context.Context, username string) (*teled.User, bo
 	}
 
 	return nil, false, nil
+}
+
+// SearchUsers returns users matching query by username prefix or name
+// substring, case-insensitively, ordered by id, up to limit.
+func (d *DB) SearchUsers(_ context.Context, query string, limit int) ([]teled.User, error) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return nil, nil
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var out []teled.User
+
+	for _, mu := range d.users {
+		u := mu.u
+		if strings.HasPrefix(strings.ToLower(u.Username), query) ||
+			strings.Contains(strings.ToLower(u.FirstName), query) ||
+			strings.Contains(strings.ToLower(u.LastName), query) {
+			out = append(out, u)
+		}
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+
+	if len(out) > limit {
+		out = out[:limit]
+	}
+
+	return out, nil
 }
 
 // SetUsername sets (or clears, when empty) a user's username and returns the
