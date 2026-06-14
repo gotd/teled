@@ -193,7 +193,7 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 	log.For(h.lg).Debug(ctx, "auth.signIn succeeded",
 		log.String("phone", phone), log.Int64("user_id", u.ID))
 
-	return &tg.AuthAuthorization{User: toTGUser(*u, true)}, nil
+	return &tg.AuthAuthorization{User: h.tgUser(*u, true)}, nil
 }
 
 // authSignUp creates a new account for an unoccupied phone number.
@@ -234,7 +234,7 @@ func (h *Handler) authSignUp(ctx context.Context, req *tg.AuthSignUpRequest) (tg
 	log.For(h.lg).Debug(ctx, "auth.signUp succeeded",
 		log.String("phone", phone), log.Int64("user_id", u.ID))
 
-	return &tg.AuthAuthorization{User: toTGUser(u, true)}, nil
+	return &tg.AuthAuthorization{User: h.tgUser(u, true)}, nil
 }
 
 // authImportBotAuthorization logs in a bot by token. Tokens are not minted by a
@@ -272,7 +272,7 @@ func (h *Handler) authImportBotAuthorization(
 		return nil, h.internal(ctx, "bind session", err)
 	}
 
-	return &tg.AuthAuthorization{User: toTGUser(*bot, true)}, nil
+	return &tg.AuthAuthorization{User: h.tgUser(*bot, true)}, nil
 }
 
 // authBindTempAuthKey records the binding of a temporary (PFS) auth key — the

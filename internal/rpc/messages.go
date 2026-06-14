@@ -56,7 +56,7 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 			&tg.UpdateMessageID{ID: int(sent.SenderLocalID), RandomID: req.RandomID},
 			&tg.UpdateNewMessage{Message: out, Pts: sent.SenderPts, PtsCount: 1},
 		},
-		Users: []tg.UserClass{toTGUser(caller, true), toTGUser(peer, false)},
+		Users: []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
 		Date:  int(sent.Date.Unix()),
 	}, nil
 }
@@ -96,7 +96,7 @@ func (h *Handler) deliver(ctx context.Context, from, peer teled.User, sent teled
 		Date:       sent.Date,
 	})
 	h.push(ctx, peer.ID,
-		[]tg.UserClass{toTGUser(from, false), toTGUser(peer, true)},
+		[]tg.UserClass{h.tgUser(from, false), h.tgUser(peer, true)},
 		int(sent.Date.Unix()),
 		&tg.UpdateNewMessage{Message: incoming, Pts: sent.RecipientPts, PtsCount: 1},
 	)
@@ -131,7 +131,7 @@ func (h *Handler) messagesGetHistory(ctx context.Context, req *tg.MessagesGetHis
 
 	return &tg.MessagesMessages{
 		Messages: out,
-		Users:    []tg.UserClass{toTGUser(caller, true), toTGUser(peer, false)},
+		Users:    []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
 	}, nil
 }
 
@@ -162,7 +162,7 @@ func (h *Handler) messagesGetSavedHistory(ctx context.Context, req *tg.MessagesG
 
 	return &tg.MessagesMessages{
 		Messages: out,
-		Users:    []tg.UserClass{toTGUser(caller, true)},
+		Users:    []tg.UserClass{h.tgUser(caller, true)},
 	}, nil
 }
 
@@ -183,6 +183,6 @@ func (h *Handler) contactsResolveUsername(ctx context.Context, req *tg.ContactsR
 
 	return &tg.ContactsResolvedPeer{
 		Peer:  &tg.PeerUser{UserID: u.ID},
-		Users: []tg.UserClass{toTGUser(*u, false)},
+		Users: []tg.UserClass{h.tgUser(*u, false)},
 	}, nil
 }

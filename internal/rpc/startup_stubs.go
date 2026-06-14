@@ -169,5 +169,5 @@ func (h *Handler) accountUpdateProfile(ctx context.Context, _ *tg.AccountUpdateP
 		return nil, err
 	}
 
-	return toTGUser(caller, true), nil
+	return h.tgUser(caller, true), nil
 }

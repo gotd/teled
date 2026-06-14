@@ -31,7 +31,7 @@ func (h *Handler) usersGetUsers(ctx context.Context, ids []tg.InputUserClass) ([
 				return nil, tgerr.New(401, "AUTH_KEY_UNREGISTERED")
 			}
 
-			out = append(out, toTGUser(caller, true))
+			out = append(out, h.tgUser(caller, true))
 		case *tg.InputUser:
 			u, ok, err := h.db.UserByID(ctx, v.UserID)
 			if err != nil {
@@ -43,7 +43,7 @@ func (h *Handler) usersGetUsers(ctx context.Context, ids []tg.InputUserClass) ([
 				continue
 			}
 
-			out = append(out, toTGUser(*u, loggedIn && u.ID == caller.ID))
+			out = append(out, h.tgUser(*u, loggedIn && u.ID == caller.ID))
 		default:
 			// InputUserEmpty / unsupported.
 			out = append(out, &tg.UserEmpty{})
@@ -99,6 +99,6 @@ func (h *Handler) usersGetFullUser(ctx context.Context, id tg.InputUserClass) (*
 
 	return &tg.UsersUserFull{
 		FullUser: full,
-		Users:    []tg.UserClass{toTGUser(target, self)},
+		Users:    []tg.UserClass{h.tgUser(target, self)},
 	}, nil
 }

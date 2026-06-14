@@ -12,19 +12,34 @@ import (
 	"github.com/gotd/teled"
 )
 
-// userStatus returns the presence status for a user. UserStatusEmpty renders in
-// clients as "last seen a long time ago"; instead the caller (self) is reported
-// online, and everyone else as seen recently.
-func userStatus(self bool) tg.UserStatusClass {
+// onlineWindow bounds how long after a user's last activity they are still
+// reported as online.
+const onlineWindow = time.Minute
+
+// userStatus returns real presence for a user. UserStatusEmpty renders in
+// clients as "last seen a long time ago"; instead the caller (self) and any user
+// active within onlineWindow are reported online, a user seen earlier is
+// reported offline with that timestamp, and a user never seen this process is
+// reported as "recently".
+func (h *Handler) userStatus(userID int64, self bool) tg.UserStatusClass {
+	now := time.Now()
 	if self {
-		return &tg.UserStatusOnline{Expires: int(time.Now().Add(5 * time.Minute).Unix())}
+		return &tg.UserStatusOnline{Expires: int(now.Add(onlineWindow).Unix())}
 	}
 
-	return &tg.UserStatusRecently{}
+	ts, ok := h.sessions.lastSeenAt(userID)
+	switch {
+	case !ok:
+		return &tg.UserStatusRecently{}
+	case now.Sub(ts) < onlineWindow:
+		return &tg.UserStatusOnline{Expires: int(ts.Add(onlineWindow).Unix())}
+	default:
+		return &tg.UserStatusOffline{WasOnline: int(ts.Unix())}
+	}
 }
 
-// toTGUser maps a stored user to its tg.User wire form.
-func toTGUser(u teled.User, self bool) *tg.User {
+// tgUser maps a stored user to its tg.User wire form, including real presence.
+func (h *Handler) tgUser(u teled.User, self bool) *tg.User {
 	user := &tg.User{
 		ID:         u.ID,
 		AccessHash: u.AccessHash,
@@ -32,7 +47,7 @@ func toTGUser(u teled.User, self bool) *tg.User {
 		LastName:   u.LastName,
 		Self:       self,
 		Photo:      &tg.UserProfilePhotoEmpty{},
-		Status:     userStatus(self),
+		Status:     h.userStatus(u.ID, self),
 	}
 	if u.Username != "" {
 		user.Username = u.Username

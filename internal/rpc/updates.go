@@ -125,7 +125,7 @@ func (h *Handler) usersByIDs(ctx context.Context, self int64, ids map[int64]stru
 
 	out := make([]tg.UserClass, 0, len(users))
 	for i := range users {
-		out = append(out, toTGUser(users[i], users[i].ID == self))
+		out = append(out, h.tgUser(users[i], users[i].ID == self))
 	}
 
 	return out, nil

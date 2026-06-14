@@ -2,23 +2,30 @@ package rpc
 
 import (
 	"sync"
+	"time"
 
 	"github.com/gotd/teled/internal/mtproto"
 )
 
 // sessionRegistry maps logged-in users to their live MTProto sessions so the
-// server can push updates. It is in-memory and single-instance; sessions are
-// (re)registered as authenticated requests arrive.
+// server can push updates, and records each user's last-activity time so the
+// server can report real presence (online/last seen). It is in-memory and
+// single-instance; sessions are (re)registered as authenticated requests arrive.
 type sessionRegistry struct {
-	mu sync.RWMutex
-	m  map[int64]map[int64]mtproto.Session // userID -> sessionID -> session
+	mu       sync.RWMutex
+	m        map[int64]map[int64]mtproto.Session // userID -> sessionID -> session
+	lastSeen map[int64]time.Time                 // userID -> last activity
 }
 
 func newSessionRegistry() *sessionRegistry {
-	return &sessionRegistry{m: map[int64]map[int64]mtproto.Session{}}
+	return &sessionRegistry{
+		m:        map[int64]map[int64]mtproto.Session{},
+		lastSeen: map[int64]time.Time{},
+	}
 }
 
-// track records that userID is reachable on the given session.
+// track records that userID is reachable on the given session and marks the user
+// as just seen.
 func (r *sessionRegistry) track(userID int64, s mtproto.Session) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -30,6 +37,17 @@ func (r *sessionRegistry) track(userID int64, s mtproto.Session) {
 	}
 
 	sessions[s.ID] = s
+	r.lastSeen[userID] = time.Now()
+}
+
+// lastSeenAt returns when userID was last active, if ever recorded.
+func (r *sessionRegistry) lastSeenAt(userID int64) (time.Time, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	ts, ok := r.lastSeen[userID]
+
+	return ts, ok
 }
 
 // untrack removes a session from a user's tracked set, e.g. after a push fails

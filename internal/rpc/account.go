@@ -67,5 +67,5 @@ func (h *Handler) accountUpdateUsername(ctx context.Context, username string) (t
 	log.For(h.lg).Debug(ctx, "account.updateUsername",
 		log.Int64("user_id", caller.ID), log.String("username", username))
 
-	return toTGUser(updated, true), nil
+	return h.tgUser(updated, true), nil
 }

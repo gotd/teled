@@ -61,7 +61,7 @@ func (h *Handler) handleBotFather(ctx context.Context, caller, botFather teled.U
 			Date:       sent.Date,
 		})
 		h.push(ctx, caller.ID,
-			[]tg.UserClass{toTGUser(botFather, false), toTGUser(caller, true)},
+			[]tg.UserClass{h.tgUser(botFather, false), h.tgUser(caller, true)},
 			int(sent.Date.Unix()),
 			&tg.UpdateNewMessage{Message: incoming, Pts: sent.RecipientPts, PtsCount: 1},
 		)

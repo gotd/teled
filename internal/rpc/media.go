@@ -113,7 +113,7 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 			Out: false, Text: req.Message, Date: sent.Date, Media: &file,
 		})
 		h.push(ctx, peer.ID,
-			[]tg.UserClass{toTGUser(caller, false), toTGUser(peer, true)},
+			[]tg.UserClass{h.tgUser(caller, false), h.tgUser(peer, true)},
 			int(sent.Date.Unix()),
 			&tg.UpdateNewMessage{Message: incoming, Pts: sent.RecipientPts, PtsCount: 1},
 		)
@@ -124,7 +124,7 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 			&tg.UpdateMessageID{ID: int(sent.SenderLocalID), RandomID: req.RandomID},
 			&tg.UpdateNewMessage{Message: out, Pts: sent.SenderPts, PtsCount: 1},
 		},
-		Users: []tg.UserClass{toTGUser(caller, true), toTGUser(peer, false)},
+		Users: []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
 		Date:  int(sent.Date.Unix()),
 	}, nil
 }

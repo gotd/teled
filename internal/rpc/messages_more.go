@@ -29,7 +29,7 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 		return nil, h.internal(ctx, "get dialogs", err)
 	}
 
-	users := []tg.UserClass{toTGUser(caller, true)}
+	users := []tg.UserClass{h.tgUser(caller, true)}
 	outDialogs := make([]tg.DialogClass, 0, len(dialogs))
 	messages := make([]tg.MessageClass, 0, len(dialogs))
 
@@ -43,7 +43,7 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 			continue
 		}
 
-		users = append(users, toTGUser(*peer, false))
+		users = append(users, h.tgUser(*peer, false))
 
 		top, err := h.db.GetHistory(ctx, caller.ID, dl.PeerUserID, 0, 1)
 		if err != nil {
@@ -119,7 +119,7 @@ func (h *Handler) messagesEditMessage(ctx context.Context, req *tg.MessagesEditM
 			Out: false, Text: req.Message, Date: res.Date, EditDate: res.EditDate,
 		})
 		h.push(ctx, peer.ID,
-			[]tg.UserClass{toTGUser(caller, false), toTGUser(peer, true)},
+			[]tg.UserClass{h.tgUser(caller, false), h.tgUser(peer, true)},
 			int(res.EditDate.Unix()),
 			&tg.UpdateEditMessage{Message: peerView, Pts: res.PeerPts, PtsCount: 1},
 		)
@@ -127,7 +127,7 @@ func (h *Handler) messagesEditMessage(ctx context.Context, req *tg.MessagesEditM
 
 	return &tg.Updates{
 		Updates: []tg.UpdateClass{&tg.UpdateEditMessage{Message: edited, Pts: res.SelfPts, PtsCount: 1}},
-		Users:   []tg.UserClass{toTGUser(caller, true), toTGUser(peer, false)},
+		Users:   []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
 		Date:    int(res.EditDate.Unix()),
 	}, nil
 }
