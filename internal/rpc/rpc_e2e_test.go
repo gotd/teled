@@ -38,6 +38,7 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 	)
 
 	log := zaptest.NewLogger(t)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -52,10 +53,12 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 	require.NoError(t, err)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
+
 	addr := ln.Addr().(*net.TCPAddr)
 
 	store, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
+
 	handler := New(logzap.New(log.Named("rpc")), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
@@ -93,6 +96,7 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 				Settings:    tg.CodeSettings{},
 			})
 			require.NoError(t, err)
+
 			code, ok := sent.(*tg.AuthSentCode)
 			require.True(t, ok)
 
@@ -104,6 +108,7 @@ func TestAuthSignUpAndSelf(t *testing.T) {
 				LastName:      "Lovelace",
 			})
 			require.NoError(t, err)
+
 			auth, ok := authResp.(*tg.AuthAuthorization)
 			require.True(t, ok)
 			self, ok := auth.User.(*tg.User)

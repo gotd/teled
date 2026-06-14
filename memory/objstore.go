@@ -38,9 +38,11 @@ func (s *ObjectStore) Put(_ context.Context, key string, r io.Reader, _ int64, _
 	if err != nil {
 		return errors.Wrap(err, "read")
 	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.objs[key] = data
+
 	return nil
 }
 
@@ -48,10 +50,12 @@ func (s *ObjectStore) Put(_ context.Context, key string, r io.Reader, _ int64, _
 func (s *ObjectStore) Get(_ context.Context, key string) (io.ReadCloser, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	data, ok := s.objs[key]
 	if !ok {
 		return nil, errors.Errorf("object %q not found", key)
 	}
+
 	return io.NopCloser(bytes.NewReader(clone(data))), nil
 }
 
@@ -60,17 +64,21 @@ func (s *ObjectStore) Get(_ context.Context, key string) (io.ReadCloser, error) 
 func (s *ObjectStore) GetRange(_ context.Context, key string, offset, length int64) (io.ReadCloser, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	data, ok := s.objs[key]
 	if !ok {
 		return nil, errors.Errorf("object %q not found", key)
 	}
+
 	if offset < 0 || offset > int64(len(data)) {
 		return nil, errors.Errorf("offset %d out of range", offset)
 	}
+
 	end := offset + length
 	if length < 0 || end > int64(len(data)) {
 		end = int64(len(data))
 	}
+
 	return io.NopCloser(bytes.NewReader(clone(data[offset:end]))), nil
 }
 
@@ -78,10 +86,12 @@ func (s *ObjectStore) GetRange(_ context.Context, key string, offset, length int
 func (s *ObjectStore) Stat(_ context.Context, key string) (teled.ObjectInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	data, ok := s.objs[key]
 	if !ok {
 		return teled.ObjectInfo{}, errors.Errorf("object %q not found", key)
 	}
+
 	return teled.ObjectInfo{Size: int64(len(data))}, nil
 }
 
@@ -90,6 +100,7 @@ func (s *ObjectStore) Delete(_ context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.objs, key)
+
 	return nil
 }
 
@@ -97,5 +108,6 @@ func (s *ObjectStore) Delete(_ context.Context, key string) error {
 func clone(b []byte) []byte {
 	out := make([]byte, len(b))
 	copy(out, b)
+
 	return out
 }

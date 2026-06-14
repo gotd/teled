@@ -42,6 +42,7 @@ func (a *application) setupStorage(ctx context.Context, providers obs.Providers)
 		pool.Close()
 		return nil, nil, errors.Wrap(err, "new queue")
 	}
+
 	if err := q.Start(ctx); err != nil {
 		pool.Close()
 		return nil, nil, errors.Wrap(err, "start queue")
@@ -50,12 +51,15 @@ func (a *application) setupStorage(ctx context.Context, providers obs.Providers)
 	cleanup := func() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+
 		if err := q.Stop(stopCtx); err != nil {
 			log.For(a.lg).Warn(stopCtx, "Stop queue", log.Error(err))
 		}
+
 		pool.Close()
 	}
 
 	log.For(a.lg).Info(ctx, "Connected to PostgreSQL")
+
 	return pool, cleanup, nil
 }

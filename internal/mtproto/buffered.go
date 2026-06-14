@@ -31,11 +31,14 @@ func (c *bufferedConn) Push(b *bin.Buffer) {
 func (c *bufferedConn) pop() (r bin.Buffer, ok bool) {
 	c.recvMux.Lock()
 	defer c.recvMux.Unlock()
+
 	if len(c.recv) < 1 {
 		return
 	}
+
 	r, c.recv = c.recv[len(c.recv)-1], c.recv[:len(c.recv)-1]
 	ok = true
+
 	return
 }
 
@@ -48,6 +51,7 @@ func (c *bufferedConn) Recv(ctx context.Context, b *bin.Buffer) error {
 		b.ResetTo(e.Copy())
 		return nil
 	}
+
 	return c.conn.Recv(ctx, b)
 }
 

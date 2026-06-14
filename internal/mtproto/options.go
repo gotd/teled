@@ -45,21 +45,27 @@ func (opt *ServerOptions) setDefaults() {
 	if opt.DC == 0 {
 		opt.DC = 2
 	}
+
 	if opt.Random == nil {
 		opt.Random = crypto.DefaultRand()
 	}
+
 	if opt.Logger == nil {
 		opt.Logger = log.Nop
 	}
+
 	if opt.Keys == nil {
 		opt.Keys = NewInMemoryKeys()
 	}
+
 	if opt.Clock == nil {
 		opt.Clock = clock.System
 	}
+
 	if opt.MessageID == nil {
 		opt.MessageID = proto.NewMessageIDGen(opt.Clock.Now)
 	}
+
 	if opt.Types == nil {
 		opt.Types = tmap.New(
 			tg.TypesMap(),
@@ -67,9 +73,11 @@ func (opt *ServerOptions) setDefaults() {
 			proto.TypesMap(),
 		)
 	}
+
 	if opt.ReadTimeout == 0 {
 		opt.ReadTimeout = 30 * time.Second
 	}
+
 	if opt.WriteTimeout == 0 {
 		opt.WriteTimeout = 30 * time.Second
 	}

@@ -16,11 +16,14 @@ func (db *DB) GetState(ctx context.Context, self int64) (teled.State, error) {
 		st  teled.State
 		pts int64
 	)
+
 	if err := db.pool.QueryRow(ctx, `SELECT pts FROM users WHERE id = $1`, self).Scan(&pts); err != nil {
 		return teled.State{}, gerrors.Wrap(err, "scan")
 	}
+
 	st.Pts = int(pts)
 	st.Date = time.Now()
+
 	return st, nil
 }
 
@@ -34,18 +37,23 @@ FROM message_refs r
 JOIN messages m ON m.global_id = r.global_id
 LEFT JOIN files f ON f.id = m.media_file_id
 WHERE r.user_id = $1 AND r.global_id = $2`
+
 	rows, err := db.pool.Query(ctx, q, self, globalID)
 	if err != nil {
 		return teled.Message{}, false, gerrors.Wrap(err, "query")
 	}
+
 	defer rows.Close()
+
 	if !rows.Next() {
 		return teled.Message{}, false, rows.Err()
 	}
+
 	m, err := scanMessage(rows)
 	if err != nil {
 		return teled.Message{}, false, gerrors.Wrap(err, "scan")
 	}
+
 	return m, true, nil
 }
 
@@ -59,28 +67,35 @@ func (db *DB) GetDifference(ctx context.Context, self int64, sincePts, limit int
 
 	q := `SELECT pts, pts_count, type, global_id, extra, date FROM updates_log
 	      WHERE user_id = $1 AND pts > $2 ORDER BY pts LIMIT ` + strconv.Itoa(limit)
+
 	rows, err := db.pool.Query(ctx, q, self, sincePts)
 	if err != nil {
 		return nil, 0, gerrors.Wrap(err, "query")
 	}
+
 	defer rows.Close()
 
 	var entries []teled.UpdateLogEntry
+
 	for rows.Next() {
 		var (
 			e        teled.UpdateLogEntry
 			globalID *int64
 			extra    []byte
 		)
+
 		if err := rows.Scan(&e.Pts, &e.PtsCount, &e.Type, &globalID, &extra, &e.Date); err != nil {
 			return nil, 0, gerrors.Wrap(err, "scan")
 		}
+
 		e.GlobalID = globalID
 		e.Extra = extra
 		entries = append(entries, e)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, 0, gerrors.Wrap(err, "rows")
 	}
+
 	return entries, current.Pts, nil
 }

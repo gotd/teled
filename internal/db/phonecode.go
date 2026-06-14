@@ -21,9 +21,11 @@ func (db *DB) SavePhoneCode(ctx context.Context, phone, codeHash, code string, t
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
@@ -41,7 +43,9 @@ func (db *DB) PhoneCode(ctx context.Context, phone, codeHash string) (code strin
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", false, nil
 		}
+
 		return "", false, gerrors.Wrap(err, "scan")
 	}
+
 	return code, true, nil
 }

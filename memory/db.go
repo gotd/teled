@@ -114,6 +114,7 @@ func NewDB() *DB {
 		IsBot:      true,
 		CreatedAt:  time.Now(),
 	}}
+
 	return d
 }
 
@@ -127,10 +128,12 @@ func (d *DB) Ready(context.Context) error { return nil }
 func genAccessHash() int64 {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
+
 	h := int64(binary.LittleEndian.Uint64(b[:])) // #nosec G115 -- bit reinterpretation.
 	if h == 0 {
 		h = 1
 	}
+
 	return h
 }
 
@@ -144,11 +147,13 @@ func (d *DB) phoneTaken(phone string) bool {
 	if phone == "" {
 		return false
 	}
+
 	for _, mu := range d.users {
 		if mu.u.Phone == phone {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -156,11 +161,13 @@ func (d *DB) usernameTaken(username string) bool {
 	if username == "" {
 		return false
 	}
+
 	for _, mu := range d.users {
 		if mu.u.Username == username {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -168,11 +175,13 @@ func (d *DB) tokenTaken(token string) bool {
 	if token == "" {
 		return false
 	}
+
 	for _, mu := range d.users {
 		if mu.u.BotToken == token {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -180,9 +189,11 @@ func (d *DB) tokenTaken(token string) bool {
 func (d *DB) CreateUser(_ context.Context, phone, firstName, lastName string) (teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if d.phoneTaken(phone) {
 		return teled.User{}, errors.Errorf("phone %q already exists", phone)
 	}
+
 	d.userSeq++
 	u := teled.User{
 		ID:         d.userSeq,
@@ -193,6 +204,7 @@ func (d *DB) CreateUser(_ context.Context, phone, firstName, lastName string) (t
 		CreatedAt:  time.Now(),
 	}
 	d.users[u.ID] = &memUser{u: u}
+
 	return u, nil
 }
 
@@ -201,12 +213,15 @@ func (d *DB) CreateUser(_ context.Context, phone, firstName, lastName string) (t
 func (d *DB) CreateBot(_ context.Context, token, username, firstName string) (teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if d.tokenTaken(token) {
 		return teled.User{}, errors.Errorf("bot token already exists")
 	}
+
 	if d.usernameTaken(username) {
 		return teled.User{}, errors.Errorf("username %q already exists", username)
 	}
+
 	d.userSeq++
 	u := teled.User{
 		ID:         d.userSeq,
@@ -218,6 +233,7 @@ func (d *DB) CreateBot(_ context.Context, token, username, firstName string) (te
 		CreatedAt:  time.Now(),
 	}
 	d.users[u.ID] = &memUser{u: u}
+
 	return u, nil
 }
 
@@ -226,9 +242,11 @@ func (d *DB) CreateBot(_ context.Context, token, username, firstName string) (te
 func (d *DB) CreateOwnedBot(_ context.Context, username, firstName string, ownerID int64, secret string) (teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if d.usernameTaken(username) {
 		return teled.User{}, errors.Errorf("username %q already exists", username)
 	}
+
 	d.userSeq++
 	id := d.userSeq
 	u := teled.User{
@@ -241,6 +259,7 @@ func (d *DB) CreateOwnedBot(_ context.Context, username, firstName string, owner
 		CreatedAt:  time.Now(),
 	}
 	d.users[id] = &memUser{u: u, botOwnerID: ownerID}
+
 	return u, nil
 }
 
@@ -248,9 +267,11 @@ func (d *DB) CreateOwnedBot(_ context.Context, username, firstName string, owner
 func (d *DB) SetBotToken(_ context.Context, botID int64, token string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if mu, ok := d.users[botID]; ok && mu.u.IsBot {
 		mu.u.BotToken = token
 	}
+
 	return nil
 }
 
@@ -258,11 +279,13 @@ func (d *DB) SetBotToken(_ context.Context, botID int64, token string) error {
 func (d *DB) BotByToken(_ context.Context, token string) (*teled.User, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	for _, mu := range d.users {
 		if mu.u.IsBot && mu.u.BotToken == token {
 			return userCopy(mu.u), true, nil
 		}
 	}
+
 	return nil, false, nil
 }
 
@@ -270,13 +293,17 @@ func (d *DB) BotByToken(_ context.Context, token string) (*teled.User, bool, err
 func (d *DB) BotsByOwner(_ context.Context, ownerID int64) ([]teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	var bots []teled.User
+
 	for _, mu := range d.users {
 		if mu.botOwnerID == ownerID {
 			bots = append(bots, mu.u)
 		}
 	}
+
 	sort.Slice(bots, func(i, j int) bool { return bots[i].ID < bots[j].ID })
+
 	return bots, nil
 }
 
@@ -284,9 +311,11 @@ func (d *DB) BotsByOwner(_ context.Context, ownerID int64) ([]teled.User, error)
 func (d *DB) UserByID(_ context.Context, id int64) (*teled.User, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if mu, ok := d.users[id]; ok {
 		return userCopy(mu.u), true, nil
 	}
+
 	return nil, false, nil
 }
 
@@ -294,11 +323,13 @@ func (d *DB) UserByID(_ context.Context, id int64) (*teled.User, bool, error) {
 func (d *DB) UserByPhone(_ context.Context, phone string) (*teled.User, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	for _, mu := range d.users {
 		if mu.u.Phone == phone {
 			return userCopy(mu.u), true, nil
 		}
 	}
+
 	return nil, false, nil
 }
 
@@ -306,11 +337,13 @@ func (d *DB) UserByPhone(_ context.Context, phone string) (*teled.User, bool, er
 func (d *DB) UserByUsername(_ context.Context, username string) (*teled.User, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	for _, mu := range d.users {
 		if mu.u.Username == username {
 			return userCopy(mu.u), true, nil
 		}
 	}
+
 	return nil, false, nil
 }
 
@@ -319,10 +352,12 @@ func (d *DB) UserByUsername(_ context.Context, username string) (*teled.User, bo
 func (d *DB) SetUsername(_ context.Context, userID int64, username string) (teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	mu, ok := d.users[userID]
 	if !ok {
 		return teled.User{}, errors.Errorf("user %d not found", userID)
 	}
+
 	if username != "" {
 		for id, other := range d.users {
 			if id != userID && other.u.Username == username {
@@ -330,7 +365,9 @@ func (d *DB) SetUsername(_ context.Context, userID int64, username string) (tele
 			}
 		}
 	}
+
 	mu.u.Username = username
+
 	return *userCopy(mu.u), nil
 }
 
@@ -338,12 +375,14 @@ func (d *DB) SetUsername(_ context.Context, userID int64, username string) (tele
 func (d *DB) UsersByIDs(_ context.Context, ids []int64) ([]teled.User, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	var users []teled.User
 	for _, id := range ids {
 		if mu, ok := d.users[id]; ok {
 			users = append(users, mu.u)
 		}
 	}
+
 	return users, nil
 }
 
@@ -356,17 +395,20 @@ func (d *DB) SavePhoneCode(_ context.Context, phone, codeHash, code string, ttl 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.phoneCodes[phoneCodeKey(phone, codeHash)] = memPhoneCode{code: code, expiresAt: time.Now().Add(ttl)}
+
 	return nil
 }
 
 // PhoneCode returns the unexpired code stored for (phone, codeHash).
-func (d *DB) PhoneCode(_ context.Context, phone, codeHash string) (string, bool, error) {
+func (d *DB) PhoneCode(_ context.Context, phone, codeHash string) (code string, ok bool, err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	pc, ok := d.phoneCodes[phoneCodeKey(phone, codeHash)]
 	if !ok || !pc.expiresAt.After(time.Now()) {
 		return "", false, nil
 	}
+
 	return pc.code, true, nil
 }
 
@@ -377,14 +419,16 @@ func (d *DB) BindSession(_ context.Context, keyID [8]byte, userID int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.sessions[keyID] = userID
+
 	return nil
 }
 
 // SessionUserID returns the user bound to the given auth key, if any.
-func (d *DB) SessionUserID(_ context.Context, keyID [8]byte) (int64, bool, error) {
+func (d *DB) SessionUserID(_ context.Context, keyID [8]byte) (userID int64, ok bool, err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	userID, ok := d.sessions[keyID]
+	userID, ok = d.sessions[keyID]
+
 	return userID, ok, nil
 }
 
@@ -393,6 +437,7 @@ func (d *DB) Unbind(_ context.Context, keyID [8]byte) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.sessions, keyID)
+
 	return nil
 }
 
@@ -400,16 +445,19 @@ func (d *DB) BindTempAuthKey(_ context.Context, tempKeyID, permKeyID [8]byte, ex
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.tempKeys[tempKeyID] = memTempKey{perm: permKeyID, expiresAt: expiresAt}
+
 	return nil
 }
 
-func (d *DB) PermAuthKey(_ context.Context, tempKeyID [8]byte) ([8]byte, bool, error) {
+func (d *DB) PermAuthKey(_ context.Context, tempKeyID [8]byte) (permKeyID [8]byte, ok bool, err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	tk, ok := d.tempKeys[tempKeyID]
 	if !ok || !tk.expiresAt.After(time.Now()) {
 		return [8]byte{}, false, nil
 	}
+
 	return tk.perm, true, nil
 }
 
@@ -420,6 +468,7 @@ func (d *DB) allocate(userID int64) (localID int64, pts int) {
 	mu := d.users[userID]
 	mu.lastMessageID++
 	mu.pts++
+
 	return mu.lastMessageID, mu.pts
 }
 
@@ -427,6 +476,7 @@ func (d *DB) allocate(userID int64) (localID int64, pts int) {
 func (d *DB) allocatePts(userID int64, count int) int {
 	mu := d.users[userID]
 	mu.pts += count
+
 	return mu.pts
 }
 
@@ -437,6 +487,7 @@ func (d *DB) putRef(userID int64, r *memRef) {
 		m = make(map[int64]*memRef)
 		d.refs[userID] = m
 	}
+
 	m[r.localID] = r
 }
 
@@ -459,6 +510,7 @@ func (d *DB) refByGlobal(userID, globalID int64) (*memRef, bool) {
 			return r, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -495,6 +547,7 @@ func (d *DB) SendMessage(_ context.Context, fromID, peerID int64, text string, r
 		d.putRef(peerID, &memRef{localID: sent.RecipientLocalID, globalID: m.globalID, out: false, unread: true})
 		d.logUpdate(peerID, sent.RecipientPts, 1, teled.UpdateNew, &gid, nil)
 	}
+
 	return sent, nil
 }
 
@@ -503,6 +556,7 @@ func other(self int64, m *memMessage) int64 {
 	if m.from == self {
 		return m.peer
 	}
+
 	return m.from
 }
 
@@ -519,12 +573,14 @@ func (d *DB) message(self int64, r *memRef, m *memMessage) teled.Message {
 		EditDate:   m.editDate,
 		RandomID:   m.randomID,
 	}
+
 	if m.mediaFileID != 0 {
 		if f, ok := d.files[m.mediaFileID]; ok {
 			fc := *f
 			msg.Media = &fc
 		}
 	}
+
 	return msg
 }
 
@@ -534,20 +590,26 @@ func (d *DB) GetHistory(_ context.Context, self, peer, offsetID int64, limit int
 	defer d.mu.Unlock()
 
 	var msgs []teled.Message
+
 	for _, r := range d.refs[self] {
 		m := d.messages[r.globalID]
 		if m == nil || m.deleted || other(self, m) != peer {
 			continue
 		}
+
 		if offsetID > 0 && r.localID >= offsetID {
 			continue
 		}
+
 		msgs = append(msgs, d.message(self, r, m))
 	}
+
 	sort.Slice(msgs, func(i, j int) bool { return msgs[i].LocalID > msgs[j].LocalID })
+
 	if limit > 0 && len(msgs) > limit {
 		msgs = msgs[:limit]
 	}
+
 	return msgs, nil
 }
 
@@ -555,14 +617,17 @@ func (d *DB) GetHistory(_ context.Context, self, peer, offsetID int64, limit int
 func (d *DB) MessageByGlobal(_ context.Context, self, globalID int64) (teled.Message, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	r, ok := d.refByGlobal(self, globalID)
 	if !ok {
 		return teled.Message{}, false, nil
 	}
+
 	m := d.messages[globalID]
 	if m == nil {
 		return teled.Message{}, false, nil
 	}
+
 	return d.message(self, r, m), true, nil
 }
 
@@ -575,6 +640,7 @@ func (d *DB) EditMessage(_ context.Context, self, localID int64, text string) (t
 	if !ok {
 		return teled.EditResult{}, teled.ErrMessageID
 	}
+
 	m := d.messages[r.globalID]
 	if m == nil || m.deleted || m.from != self {
 		return teled.EditResult{}, teled.ErrMessageID
@@ -596,9 +662,11 @@ func (d *DB) EditMessage(_ context.Context, self, localID int64, text string) (t
 		if pr, ok := d.refByGlobal(m.peer, m.globalID); ok {
 			res.PeerLocalID = pr.localID
 		}
+
 		res.PeerPts = d.allocatePts(m.peer, 1)
 		d.logUpdate(m.peer, res.PeerPts, 1, teled.UpdateEdit, &gid, nil)
 	}
+
 	return res, nil
 }
 
@@ -609,14 +677,17 @@ func (d *DB) DeleteMessages(_ context.Context, self int64, localIDs []int64) (te
 	defer d.mu.Unlock()
 
 	var deleted []int64
+
 	for _, localID := range localIDs {
 		r, ok := d.refs[self][localID]
 		if !ok {
 			continue
 		}
+
 		if m := d.messages[r.globalID]; m != nil {
 			m.deleted = true
 		}
+
 		deleted = append(deleted, localID)
 	}
 
@@ -625,6 +696,7 @@ func (d *DB) DeleteMessages(_ context.Context, self int64, localIDs []int64) (te
 		res.Pts = d.allocatePts(self, len(deleted))
 		d.logUpdate(self, res.Pts, len(deleted), teled.UpdateDelete, nil, teled.EncodeDeleted(deleted))
 	}
+
 	return res, nil
 }
 
@@ -636,23 +708,29 @@ func (d *DB) GetDialogs(_ context.Context, self int64, limit int) ([]teled.Dialo
 	defer d.mu.Unlock()
 
 	byPeer := make(map[int64]*teled.Dialog)
+
 	for _, r := range d.refs[self] {
 		m := d.messages[r.globalID]
 		if m == nil || m.deleted {
 			continue
 		}
+
 		peer := other(self, m)
 		dl := byPeer[peer]
+
 		if dl == nil {
 			dl = &teled.Dialog{PeerUserID: peer}
 			byPeer[peer] = dl
 		}
+
 		if r.localID > dl.TopMessageID {
 			dl.TopMessageID = r.localID
 		}
+
 		if r.unread && !r.out {
 			dl.UnreadCount++
 		}
+
 		if !r.out && !r.unread && r.localID > dl.ReadInboxMaxID {
 			dl.ReadInboxMaxID = r.localID
 		}
@@ -662,10 +740,13 @@ func (d *DB) GetDialogs(_ context.Context, self int64, limit int) ([]teled.Dialo
 	for _, dl := range byPeer {
 		dialogs = append(dialogs, *dl)
 	}
+
 	sort.Slice(dialogs, func(i, j int) bool { return dialogs[i].TopMessageID > dialogs[j].TopMessageID })
+
 	if limit > 0 && len(dialogs) > limit {
 		dialogs = dialogs[:limit]
 	}
+
 	return dialogs, nil
 }
 
@@ -679,15 +760,18 @@ func (d *DB) ReadHistory(_ context.Context, self, peer, maxID int64) (int, error
 		if r.out || r.localID > maxID {
 			continue
 		}
+
 		m := d.messages[r.globalID]
 		if m == nil || other(self, m) != peer {
 			continue
 		}
+
 		r.unread = false
 	}
 
 	pts := d.allocatePts(self, 1)
 	d.logUpdate(self, pts, 1, teled.UpdateReadInbox, nil, teled.EncodeRead(peer, maxID))
+
 	return pts, nil
 }
 
@@ -697,10 +781,12 @@ func (d *DB) ReadHistory(_ context.Context, self, peer, maxID int64) (int, error
 func (d *DB) GetState(_ context.Context, self int64) (teled.State, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	mu, ok := d.users[self]
 	if !ok {
 		return teled.State{}, errors.Errorf("user %d not found", self)
 	}
+
 	return teled.State{Pts: mu.pts, Date: time.Now()}, nil
 }
 
@@ -709,21 +795,26 @@ func (d *DB) GetState(_ context.Context, self int64) (teled.State, error) {
 func (d *DB) GetDifference(_ context.Context, self int64, sincePts, limit int) ([]teled.UpdateLogEntry, int, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	mu, ok := d.users[self]
 	if !ok {
 		return nil, 0, errors.Errorf("user %d not found", self)
 	}
 
 	var entries []teled.UpdateLogEntry
+
 	for _, e := range d.updates[self] {
 		if e.Pts > sincePts {
 			entries = append(entries, e)
 		}
 	}
+
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Pts < entries[j].Pts })
+
 	if limit > 0 && len(entries) > limit {
 		entries = entries[:limit]
 	}
+
 	return entries, mu.pts, nil
 }
 
@@ -736,18 +827,22 @@ func (d *DB) SaveFile(_ context.Context, f teled.File) (teled.File, error) {
 
 	f.AccessHash = genAccessHash()
 	f.FileReference = make([]byte, 16)
+
 	if _, err := rand.Read(f.FileReference); err != nil {
 		return teled.File{}, errors.Wrap(err, "rand")
 	}
+
 	if f.Kind == "" {
 		f.Kind = "photo"
 	}
+
 	d.fileSeq++
 	f.ID = d.fileSeq
 	f.CreatedAt = time.Now()
 
 	stored := f
 	d.files[f.ID] = &stored
+
 	return f, nil
 }
 
@@ -755,9 +850,11 @@ func (d *DB) SaveFile(_ context.Context, f teled.File) (teled.File, error) {
 func (d *DB) FileByID(_ context.Context, id int64) (teled.File, bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	if f, ok := d.files[id]; ok {
 		return *f, true, nil
 	}
+
 	return teled.File{}, false, nil
 }
 
@@ -767,6 +864,7 @@ func (d *DB) FileByID(_ context.Context, id int64) (teled.File, bool, error) {
 func (d *DB) BotFatherState(_ context.Context, userID int64) (teled.BotFatherState, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	return d.botStates[userID], nil
 }
 
@@ -775,6 +873,7 @@ func (d *DB) SetBotFatherState(_ context.Context, userID int64, s teled.BotFathe
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.botStates[userID] = s
+
 	return nil
 }
 
@@ -783,6 +882,7 @@ func (d *DB) ClearBotFatherState(_ context.Context, userID int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.botStates, userID)
+
 	return nil
 }
 
@@ -797,9 +897,11 @@ func botCommandsKey(botUserID int64, scope, langCode string) string {
 func (d *DB) SetBotCommands(_ context.Context, botUserID int64, scope, langCode string, commands []teled.BotCommand) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	stored := make([]teled.BotCommand, len(commands))
 	copy(stored, commands)
 	d.botCommands[botCommandsKey(botUserID, scope, langCode)] = stored
+
 	return nil
 }
 
@@ -808,12 +910,15 @@ func (d *DB) SetBotCommands(_ context.Context, botUserID int64, scope, langCode 
 func (d *DB) BotCommands(_ context.Context, botUserID int64, scope, langCode string) ([]teled.BotCommand, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	stored, ok := d.botCommands[botCommandsKey(botUserID, scope, langCode)]
 	if !ok {
 		return nil, nil
 	}
+
 	out := make([]teled.BotCommand, len(stored))
 	copy(out, stored)
+
 	return out, nil
 }
 
@@ -822,5 +927,6 @@ func (d *DB) ResetBotCommands(_ context.Context, botUserID int64, scope, langCod
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.botCommands, botCommandsKey(botUserID, scope, langCode))
+
 	return nil
 }

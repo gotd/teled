@@ -23,6 +23,7 @@ func TestKeyStore(t *testing.T) {
 	var raw crypto.Key
 	_, err := rand.Read(raw[:])
 	require.NoError(t, err)
+
 	key := raw.WithID()
 
 	// Absent before save.

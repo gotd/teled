@@ -19,9 +19,9 @@ linters:
     - unconvert
     - unused
     - whitespace
+    - wsl
 
   # Do not enable:
-  # - wsl       (too opinionated about newlines)
   # - godox     (todos are OK)
   # - bodyclose (false positives on helper functions)
   # - prealloc  (not worth it in scope of this project)

@@ -16,9 +16,11 @@ import (
 func (db *DB) SaveFile(ctx context.Context, f teled.File) (teled.File, error) {
 	f.AccessHash = genAccessHash()
 	f.FileReference = make([]byte, 16)
+
 	if _, err := rand.Read(f.FileReference); err != nil {
 		return teled.File{}, gerrors.Wrap(err, "rand")
 	}
+
 	if f.Kind == "" {
 		f.Kind = "photo"
 	}
@@ -30,12 +32,14 @@ func (db *DB) SaveFile(ctx context.Context, f teled.File) (teled.File, error) {
 	).Scan(&f.ID, &f.CreatedAt); err != nil {
 		return teled.File{}, gerrors.Wrap(err, "insert")
 	}
+
 	return f, nil
 }
 
 // FileByID returns stored media by id.
 func (db *DB) FileByID(ctx context.Context, id int64) (teled.File, bool, error) {
 	var f teled.File
+
 	err := db.pool.QueryRow(ctx,
 		`SELECT id, owner_user_id, access_hash, object_key, size, mime, sha256, file_reference, kind, created_at
 		 FROM files WHERE id = $1`, id,
@@ -43,8 +47,10 @@ func (db *DB) FileByID(ctx context.Context, id int64) (teled.File, bool, error) 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return teled.File{}, false, nil
 	}
+
 	if err != nil {
 		return teled.File{}, false, gerrors.Wrap(err, "scan")
 	}
+
 	return f, true, nil
 }

@@ -22,9 +22,11 @@ import (
 func TestBotFatherNewBot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	srv := teledtest.New(t)
 
 	storage := &session.StorageMemory{}
+
 	var token, botUsername string
 
 	require.NoError(t, srv.Run(ctx, storage, func(api *tg.Client) error {
@@ -33,6 +35,7 @@ func TestBotFatherNewBot(t *testing.T) {
 		// BotFather resolves by username and is a bot.
 		resolved, err := api.ContactsResolveUsername(ctx, &tg.ContactsResolveUsernameRequest{Username: "BotFather"})
 		require.NoError(t, err)
+
 		bf := resolved.Users[0].(*tg.User)
 		require.Equal(t, teled.BotFatherID, bf.ID)
 		require.True(t, bf.Bot)
@@ -40,6 +43,7 @@ func TestBotFatherNewBot(t *testing.T) {
 		peer := inputPeer(bf)
 
 		var seq int
+
 		say := func(text string) string {
 			seq++
 			_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
@@ -48,8 +52,10 @@ func TestBotFatherNewBot(t *testing.T) {
 			require.NoError(t, err)
 			hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: peer, Limit: 1})
 			require.NoError(t, err)
+
 			msgs := hist.(*tg.MessagesMessages).Messages
 			require.NotEmpty(t, msgs)
+
 			return msgs[0].(*tg.Message).Message
 		}
 
@@ -61,6 +67,7 @@ func TestBotFatherNewBot(t *testing.T) {
 
 		token = extractToken(t, done)
 		require.Contains(t, token, ":")
+
 		botUsername = "dave_e2e_bot"
 
 		// The token prefix is the new bot's user id.
@@ -75,6 +82,7 @@ func TestBotFatherNewBot(t *testing.T) {
 		listed := say("/mybots")
 		require.Contains(t, listed, "@dave_e2e_bot")
 		require.Contains(t, listed, token)
+
 		return nil
 	}))
 
@@ -83,6 +91,7 @@ func TestBotFatherNewBot(t *testing.T) {
 		self := importBot(ctx, t, api, token)
 		require.True(t, self.Bot)
 		require.Equal(t, botUsername, self.Username)
+
 		return nil
 	}))
 }
@@ -91,15 +100,18 @@ func TestBotFatherNewBot(t *testing.T) {
 func TestBotFatherCancel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	srv := teledtest.New(t)
 
 	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
 		signUp(ctx, t, api, "+5555555555", "Erin")
 		resolved, err := api.ContactsResolveUsername(ctx, &tg.ContactsResolveUsernameRequest{Username: "BotFather"})
 		require.NoError(t, err)
+
 		peer := inputPeer(resolved.Users[0].(*tg.User))
 
 		var seq int
+
 		say := func(text string) string {
 			seq++
 			_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
@@ -108,6 +120,7 @@ func TestBotFatherCancel(t *testing.T) {
 			require.NoError(t, err)
 			hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: peer, Limit: 1})
 			require.NoError(t, err)
+
 			return hist.(*tg.MessagesMessages).Messages[0].(*tg.Message).Message
 		}
 
@@ -117,6 +130,7 @@ func TestBotFatherCancel(t *testing.T) {
 		require.Contains(t, say("some name"), "I don't understand")
 		// No bots were created.
 		require.Contains(t, say("/mybots"), "don't have any bots")
+
 		return nil
 	}))
 }

@@ -59,6 +59,7 @@ func (r *registry) getSession(ctx context.Context, id [8]byte) (crypto.AuthKey, 
 	r.cacheMux.RLock()
 	key, ok := r.cache[id]
 	r.cacheMux.RUnlock()
+
 	if ok {
 		return key, true, nil
 	}
@@ -67,6 +68,7 @@ func (r *registry) getSession(ctx context.Context, id [8]byte) (crypto.AuthKey, 
 	if err != nil {
 		return crypto.AuthKey{}, false, err
 	}
+
 	if !ok {
 		return crypto.AuthKey{}, false, nil
 	}
@@ -90,6 +92,7 @@ func (r *registry) createConnection(key int64, conn transport.Conn) *connection 
 
 	c := &connection{Conn: conn}
 	r.conns[key] = c
+
 	return c
 }
 
@@ -109,6 +112,7 @@ func (r *registry) getConnection(key int64) (*connection, bool) {
 	r.connsMux.Lock()
 	conn, ok := r.conns[key]
 	r.connsMux.Unlock()
+
 	return conn, ok
 }
 
@@ -117,6 +121,7 @@ func (r *registry) deleteConnection(key int64) {
 	if conn := r.conns[key]; conn != nil {
 		_ = conn.Close()
 	}
+
 	delete(r.conns, key)
 	r.connsMux.Unlock()
 }
@@ -128,5 +133,6 @@ func (r *registry) Close() error {
 		_ = conn.Close()
 	}
 	r.connsMux.Unlock()
+
 	return nil
 }

@@ -48,6 +48,7 @@ func New(lg log.Logger, database teled.DB, store teled.ObjectStore, dc int, host
 	d := tg.NewServerDispatcher(h.fallback)
 	h.register(d)
 	h.dispatcher = d
+
 	return h
 }
 
@@ -61,6 +62,7 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	// Resolve the RPC method name from the request type id for span naming and
 	// metric labeling.
 	method := "unknown"
+
 	if id, err := req.Buf.PeekID(); err == nil {
 		if name := tg.TypesMap()[id]; name != "" {
 			method = name
@@ -69,6 +71,7 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 
 	ctx, span := h.obs.tracer.Start(ctx, method)
 	defer span.End()
+
 	start := time.Now()
 
 	// Register the session for push if it belongs to a logged-in user. Resolve
@@ -86,9 +89,11 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	status := "ok"
 	if err != nil {
 		status = "error"
+
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
+
 	h.obs.duration.Record(ctx, time.Since(start).Seconds(),
 		metric.WithAttributes(attribute.String("rpc.method", method)))
 	h.obs.requests.Add(ctx, 1, metric.WithAttributes(
@@ -99,6 +104,7 @@ func (h *Handler) OnMessage(server *mtproto.Server, req *mtproto.Request) error 
 	if err != nil {
 		return errors.Wrap(err, "handle")
 	}
+
 	return server.SendResult(req, e)
 }
 
@@ -107,6 +113,7 @@ func (h *Handler) requireDB() error {
 	if h.db == nil {
 		return tgerr.New(500, "NOT_IMPLEMENTED")
 	}
+
 	return nil
 }
 
@@ -121,6 +128,7 @@ func (h *Handler) internal(ctx context.Context, op string, err error) error {
 func (h *Handler) fallback(ctx context.Context, b *bin.Buffer) (bin.Encoder, error) {
 	id, _ := b.PeekID()
 	log.For(h.lg).Debug(ctx, "Unhandled RPC", log.String("type", tg.TypesMap()[id]))
+
 	return nil, tgerr.New(500, "NOT_IMPLEMENTED")
 }
 
@@ -145,6 +153,7 @@ func callerKeyID(ctx context.Context) ([8]byte, bool) {
 	if r == nil {
 		return [8]byte{}, false
 	}
+
 	return r.Session.AuthKey.ID, true
 }
 
@@ -154,12 +163,15 @@ func (h *Handler) requireCaller(ctx context.Context) (teled.User, error) {
 	if err := h.requireDB(); err != nil {
 		return teled.User{}, err
 	}
+
 	u, ok, err := h.callerUser(ctx)
 	if err != nil {
 		return teled.User{}, h.internal(ctx, "caller", err)
 	}
+
 	if !ok {
 		return teled.User{}, tgerr.New(401, "AUTH_KEY_UNREGISTERED")
 	}
+
 	return u, nil
 }

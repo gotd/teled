@@ -21,10 +21,13 @@ import (
 func TestBotImportAuthorizationAndCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	srv := teledtest.New(t)
 
 	const token = "424242:secret-bot-token"
+
 	storage := &session.StorageMemory{}
+
 	var botID int64
 
 	require.NoError(t, srv.Run(ctx, storage, func(api *tg.Client) error {
@@ -73,6 +76,7 @@ func TestBotImportAuthorizationAndCommands(t *testing.T) {
 		cmds, err = api.BotsGetBotCommands(ctx, &tg.BotsGetBotCommandsRequest{Scope: &tg.BotCommandScopeDefault{}})
 		require.NoError(t, err)
 		require.Empty(t, cmds)
+
 		return nil
 	}))
 
@@ -80,6 +84,7 @@ func TestBotImportAuthorizationAndCommands(t *testing.T) {
 	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
 		self := importBot(ctx, t, api, token)
 		require.Equal(t, botID, self.ID)
+
 		return nil
 	}))
 }
@@ -89,6 +94,7 @@ func TestBotImportAuthorizationAndCommands(t *testing.T) {
 func TestBotImportAuthorizationInvalidToken(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	srv := teledtest.New(t)
 
 	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
@@ -96,6 +102,7 @@ func TestBotImportAuthorizationInvalidToken(t *testing.T) {
 			APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, BotAuthToken: "not-a-valid-token",
 		})
 		require.True(t, tgerr.Is(err, "ACCESS_TOKEN_INVALID"))
+
 		return nil
 	}))
 }
@@ -104,6 +111,7 @@ func TestBotImportAuthorizationInvalidToken(t *testing.T) {
 func TestBotCommandsRequireBot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	srv := teledtest.New(t)
 
 	require.NoError(t, srv.Run(ctx, nil, func(api *tg.Client) error {
@@ -113,6 +121,7 @@ func TestBotCommandsRequireBot(t *testing.T) {
 			Commands: []tg.BotCommand{{Command: "start", Description: "x"}},
 		})
 		require.True(t, tgerr.Is(err, "USER_BOT_REQUIRED"))
+
 		return nil
 	}))
 }

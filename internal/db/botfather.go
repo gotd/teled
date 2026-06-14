@@ -14,15 +14,18 @@ import (
 // (empty Step) and no error means no flow is in progress.
 func (db *DB) BotFatherState(ctx context.Context, userID int64) (teled.BotFatherState, error) {
 	var s teled.BotFatherState
+
 	err := db.pool.QueryRow(ctx,
 		`SELECT step, draft_name FROM botfather_sessions WHERE user_id = $1`, userID,
 	).Scan(&s.Step, &s.DraftName)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return teled.BotFatherState{}, nil
 	}
+
 	if err != nil {
 		return teled.BotFatherState{}, gerrors.Wrap(err, "query")
 	}
+
 	return s, nil
 }
 
@@ -35,6 +38,7 @@ func (db *DB) SetBotFatherState(ctx context.Context, userID int64, s teled.BotFa
 	); err != nil {
 		return gerrors.Wrap(err, "upsert")
 	}
+
 	return nil
 }
 
@@ -43,5 +47,6 @@ func (db *DB) ClearBotFatherState(ctx context.Context, userID int64) error {
 	if _, err := db.pool.Exec(ctx, `DELETE FROM botfather_sessions WHERE user_id = $1`, userID); err != nil {
 		return gerrors.Wrap(err, "delete")
 	}
+
 	return nil
 }

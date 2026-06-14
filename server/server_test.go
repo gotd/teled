@@ -30,15 +30,18 @@ import (
 func TestInMemoryServer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 
 	const dc = 2
+
 	lg := logzap.New(zaptest.NewLogger(t))
 
 	rsaKey, err := rsa.GenerateKey(rand.Reader, crypto.RSAKeyBits)
 	require.NoError(t, err)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
+
 	addr := ln.Addr().(*net.TCPAddr)
 
 	// pool is nil: the server uses in-memory auth keys, the injected in-memory
@@ -50,6 +53,7 @@ func TestInMemoryServer(t *testing.T) {
 		Logger: lg,
 		DB:     memory.NewDB(),
 	})
+
 	g.Go(func(ctx context.Context) error { return srv.Serve(ctx, ln) })
 
 	keys := []telegram.PublicKey{srv.Key()}
@@ -75,11 +79,13 @@ func TestInMemoryServer(t *testing.T) {
 			PhoneNumber: phone, APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, Settings: tg.CodeSettings{},
 		})
 		require.NoError(t, err)
+
 		code := sent.(*tg.AuthSentCode)
 		authResp, err := api.AuthSignUp(ctx, &tg.AuthSignUpRequest{
 			PhoneNumber: phone, PhoneCodeHash: code.PhoneCodeHash, FirstName: first,
 		})
 		require.NoError(t, err)
+
 		return authResp.(*tg.AuthAuthorization).User.(*tg.User)
 	}
 	inputPeer := func(u *tg.User) *tg.InputPeerUser {
@@ -87,13 +93,16 @@ func TestInMemoryServer(t *testing.T) {
 	}
 
 	storageA, storageB := &session.StorageMemory{}, &session.StorageMemory{}
+
 	var userA, userB *tg.User
+
 	var basePts int
 
 	runClient(storageB, func(api *tg.Client) {
 		userB = signUp(api, "+2222222222", "Bob")
 		st, err := api.UpdatesGetState(ctx)
 		require.NoError(t, err)
+
 		basePts = st.Pts
 	})
 
@@ -106,6 +115,7 @@ func TestInMemoryServer(t *testing.T) {
 
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
 		require.NoError(t, err)
+
 		msgs := hist.(*tg.MessagesMessages).Messages
 		require.Len(t, msgs, 1)
 		require.True(t, msgs[0].(*tg.Message).Out)
@@ -115,6 +125,7 @@ func TestInMemoryServer(t *testing.T) {
 		// Incoming view + unread dialog, then read it.
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userA), Limit: 10})
 		require.NoError(t, err)
+
 		m := hist.(*tg.MessagesMessages).Messages[0].(*tg.Message)
 		require.False(t, m.Out)
 		require.Equal(t, "hello bob", m.Message)
@@ -130,6 +141,7 @@ func TestInMemoryServer(t *testing.T) {
 	})
 
 	g.Cancel()
+
 	if err := g.Wait(); err != nil {
 		require.ErrorIs(t, err, context.Canceled)
 	}

@@ -20,6 +20,7 @@ func TestFS(t *testing.T) {
 	require.NoError(t, err)
 
 	const key = "abcdef0123456789"
+
 	data := []byte(strings.Repeat("teled-media-", 1000))
 
 	require.NoError(t, fs.Put(ctx, key, bytes.NewReader(data), int64(len(data)), teled.PutOptions{}))

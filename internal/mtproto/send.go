@@ -45,6 +45,7 @@ func (s *Server) Send(ctx context.Context, k Session, t proto.MessageType, messa
 	if err := conn.Send(ctx, &b); err != nil {
 		return errors.Wrap(err, "send")
 	}
+
 	return nil
 }
 
@@ -65,6 +66,7 @@ func (s *Server) SendResult(req *Request, msg bin.Encoder) error {
 	}); err != nil {
 		return errors.Wrapf(err, "send result [%T]", msg)
 	}
+
 	return nil
 }
 
@@ -82,6 +84,7 @@ func (s *Server) SendBool(req *Request, r bool) error {
 	if !r {
 		msg = &tg.BoolFalse{}
 	}
+
 	return s.SendResult(req, msg)
 }
 
@@ -97,6 +100,7 @@ func (s *Server) SendUpdates(ctx context.Context, k Session, updates ...tg.Updat
 	}); err != nil {
 		return errors.Wrap(err, "send updates")
 	}
+
 	return nil
 }
 
@@ -105,6 +109,7 @@ func (s *Server) SendAck(ctx context.Context, k Session, ids ...int64) error {
 	if err := s.Send(ctx, k, proto.MessageFromServer, &mt.MsgsAck{MsgIDs: ids}); err != nil {
 		return errors.Wrap(err, "send ack")
 	}
+
 	return nil
 }
 
@@ -116,6 +121,7 @@ func (s *Server) SendPong(req *Request, pingID int64) error {
 	}); err != nil {
 		return errors.Wrap(err, "send pong")
 	}
+
 	return nil
 }
 
@@ -137,6 +143,7 @@ func (s *Server) SendFutureSalts(req *Request, salts ...mt.FutureSalt) error {
 	}); err != nil {
 		return errors.Wrap(err, "send future salts")
 	}
+
 	return nil
 }
 
@@ -148,6 +155,7 @@ func (s *Server) sendSessionCreated(ctx context.Context, k Session, serverSalt i
 	}); err != nil {
 		return errors.Wrap(err, "send new_session_created")
 	}
+
 	return nil
 }
 

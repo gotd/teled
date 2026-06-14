@@ -32,9 +32,11 @@ func (s *KeyStore) Save(ctx context.Context, key crypto.AuthKey) error {
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := s.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
@@ -52,10 +54,12 @@ func (s *KeyStore) Get(ctx context.Context, id [8]byte) (crypto.AuthKey, bool, e
 		if errors.Is(err, pgx.ErrNoRows) {
 			return crypto.AuthKey{}, false, nil
 		}
+
 		return crypto.AuthKey{}, false, gerrors.Wrap(err, "scan")
 	}
 
 	var k crypto.Key
+
 	copy(k[:], value)
 	// WithID recomputes the key ID, which must match the stored key_id.
 	return k.WithID(), true, nil

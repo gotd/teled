@@ -40,12 +40,15 @@ func newObservability(p obs.Providers) observability {
 func (s *FS) observe(ctx context.Context, op string) func(error) {
 	ctx, span := s.obs.tracer.Start(ctx, "objstore."+op, trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(attribute.String("objstore.operation", op))
+
 	start := time.Now()
+
 	return func(err error) {
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
+
 		span.End()
 		s.obs.opDuration.Record(ctx, time.Since(start).Seconds(),
 			metric.WithAttributes(attribute.String("objstore.operation", op)))

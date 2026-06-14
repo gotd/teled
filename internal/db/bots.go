@@ -18,6 +18,7 @@ func (db *DB) SetBotCommands(ctx context.Context, botUserID int64, scope, langCo
 	if commands == nil {
 		commands = []teled.BotCommand{}
 	}
+
 	payload, err := json.Marshal(commands)
 	if err != nil {
 		return gerrors.Wrap(err, "marshal commands")
@@ -32,9 +33,11 @@ func (db *DB) SetBotCommands(ctx context.Context, botUserID int64, scope, langCo
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
@@ -54,6 +57,7 @@ func (db *DB) BotCommands(ctx context.Context, botUserID int64, scope, langCode 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
+
 		return nil, gerrors.Wrap(err, "scan")
 	}
 
@@ -61,6 +65,7 @@ func (db *DB) BotCommands(ctx context.Context, botUserID int64, scope, langCode 
 	if err := json.Unmarshal(payload, &commands); err != nil {
 		return nil, gerrors.Wrap(err, "unmarshal commands")
 	}
+
 	return commands, nil
 }
 
@@ -74,8 +79,10 @@ func (db *DB) ResetBotCommands(ctx context.Context, botUserID int64, scope, lang
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }

@@ -70,21 +70,26 @@ func New(tb testing.TB) *Server {
 	if err := server.Migrate(dsn); err != nil {
 		tb.Fatalf("teledtest: migrate: %v", err)
 	}
+
 	pool, err := db.Open(ctx, dsn, obs.Providers{})
 	if err != nil {
 		tb.Fatalf("teledtest: open db: %v", err)
 	}
+
 	tb.Cleanup(pool.Close)
 
 	key, err := rsa.GenerateKey(rand.Reader, crypto.RSAKeyBits)
 	if err != nil {
 		tb.Fatalf("teledtest: generate key: %v", err)
 	}
+
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		tb.Fatalf("teledtest: listen: %v", err)
 	}
+
 	addr := ln.Addr().(*net.TCPAddr)
+
 	store, err := objstore.NewFS(tb.TempDir(), obs.Providers{})
 	if err != nil {
 		tb.Fatalf("teledtest: object store: %v", err)
@@ -99,14 +104,18 @@ func New(tb testing.TB) *Server {
 	})
 
 	done := make(chan struct{})
+
 	var serveErr error
+
 	go func() {
 		defer close(done)
+
 		serveErr = srv.Serve(ctx, ln)
 	}()
 	tb.Cleanup(func() {
 		cancel()
 		<-done
+
 		if serveErr != nil && !errors.Is(serveErr, context.Canceled) {
 			tb.Errorf("teledtest: serve: %v", serveErr)
 		}
@@ -131,6 +140,7 @@ func (s *Server) Client(storage session.Storage) *telegram.Client {
 	if storage == nil {
 		storage = &session.StorageMemory{}
 	}
+
 	return telegram.NewClient(telegram.TestAppID, telegram.TestAppHash, telegram.Options{
 		PublicKeys:     s.Keys,
 		DC:             s.DC,
@@ -147,6 +157,7 @@ func (s *Server) Client(storage session.Storage) *telegram.Client {
 // invokes fn with the raw API, and disconnects.
 func (s *Server) Run(ctx context.Context, storage session.Storage, fn func(api *tg.Client) error) error {
 	client := s.Client(storage)
+
 	return client.Run(ctx, func(ctx context.Context) error {
 		return fn(client.API())
 	})

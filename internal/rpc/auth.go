@@ -33,12 +33,15 @@ var testPhoneRe = regexp.MustCompile(`^\+?99966([1-9])\d{4}$`)
 // detection (testPhoneRe) see the raw digits.
 func normalizePhone(phone string) string {
 	var b strings.Builder
+
 	b.Grow(len(phone))
+
 	for _, r := range phone {
 		if r >= '0' && r <= '9' {
 			b.WriteRune(r)
 		}
 	}
+
 	return b.String()
 }
 
@@ -50,6 +53,7 @@ func phoneCode(phone string) string {
 	if m := testPhoneRe.FindStringSubmatch(phone); m != nil {
 		return strings.Repeat(m[1], 5)
 	}
+
 	return devPhoneCode
 }
 
@@ -61,6 +65,7 @@ func authKeyTag(ctx context.Context) string {
 	if !ok {
 		return ""
 	}
+
 	return hex.EncodeToString(id[:])
 }
 
@@ -75,11 +80,13 @@ func (h *Handler) authSendCode(ctx context.Context, req *tg.AuthSendCodeRequest)
 	if _, err := rand.Read(raw[:]); err != nil {
 		return nil, h.internal(ctx, "rand", err)
 	}
+
 	codeHash := hex.EncodeToString(raw[:])
 
 	phone := normalizePhone(req.PhoneNumber)
 	code := phoneCode(phone)
 	isTest := testPhoneRe.MatchString(phone)
+
 	if err := h.db.SavePhoneCode(ctx, phone, codeHash, code, codeTTL); err != nil {
 		return nil, h.internal(ctx, "save code", err)
 	}
@@ -101,6 +108,7 @@ func (h *Handler) authSendCode(ctx context.Context, req *tg.AuthSendCodeRequest)
 		Timeout:       int(codeTTL.Seconds()),
 	}
 	sent.SetFlags()
+
 	return sent, nil
 }
 
@@ -108,10 +116,12 @@ func (h *Handler) authSendCode(ctx context.Context, req *tg.AuthSendCodeRequest)
 // error on mismatch.
 func (h *Handler) checkCode(ctx context.Context, phone, codeHash, code string) error {
 	lg := log.For(h.lg)
+
 	want, ok, err := h.db.PhoneCode(ctx, phone, codeHash)
 	if err != nil {
 		return h.internal(ctx, "get code", err)
 	}
+
 	lg.Debug(ctx, "auth.checkCode lookup",
 		log.String("phone", phone),
 		log.String("code_hash", codeHash),
@@ -120,6 +130,7 @@ func (h *Handler) checkCode(ctx context.Context, phone, codeHash, code string) e
 		log.Bool("found", ok),
 		log.String("auth_key", authKeyTag(ctx)),
 	)
+
 	if !ok {
 		// No unexpired (phone, code_hash) row. Either the code TTL elapsed, or
 		// the phone / code_hash sent at sign-in differs from the one used at
@@ -128,16 +139,20 @@ func (h *Handler) checkCode(ctx context.Context, phone, codeHash, code string) e
 			log.String("phone", phone),
 			log.String("code_hash", codeHash),
 		)
+
 		return tgerr.New(400, "PHONE_CODE_EXPIRED")
 	}
+
 	if code != want {
 		lg.Warn(ctx, "auth.checkCode rejected: wrong code (PHONE_CODE_INVALID)",
 			log.String("phone", phone),
 			log.String("got_code", code),
 			log.String("want_code", want),
 		)
+
 		return tgerr.New(400, "PHONE_CODE_INVALID")
 	}
+
 	return nil
 }
 
@@ -146,6 +161,7 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 	if err := h.requireDB(); err != nil {
 		return nil, err
 	}
+
 	phone := normalizePhone(req.PhoneNumber)
 	log.For(h.lg).Debug(ctx, "auth.signIn request",
 		log.String("phone", phone),
@@ -153,6 +169,7 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 		log.String("code_hash", req.PhoneCodeHash),
 		log.String("code", req.PhoneCode),
 	)
+
 	if err := h.checkCode(ctx, phone, req.PhoneCodeHash, req.PhoneCode); err != nil {
 		return nil, err
 	}
@@ -161,6 +178,7 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 	if err != nil {
 		return nil, h.internal(ctx, "lookup user", err)
 	}
+
 	if !ok {
 		log.For(h.lg).Debug(ctx, "auth.signIn: no account, signup required",
 			log.String("phone", phone))
@@ -170,8 +188,10 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 	if err := h.bindCaller(ctx, u.ID); err != nil {
 		return nil, h.internal(ctx, "bind session", err)
 	}
+
 	log.For(h.lg).Debug(ctx, "auth.signIn succeeded",
 		log.String("phone", phone), log.Int64("user_id", u.ID))
+
 	return &tg.AuthAuthorization{User: toTGUser(*u, true)}, nil
 }
 
@@ -180,6 +200,7 @@ func (h *Handler) authSignUp(ctx context.Context, req *tg.AuthSignUpRequest) (tg
 	if err := h.requireDB(); err != nil {
 		return nil, err
 	}
+
 	phone := normalizePhone(req.PhoneNumber)
 	// signUp does not carry the entered code; it must match the one issued at
 	// sendCode, which for the test server is deterministic from the phone.
@@ -189,6 +210,7 @@ func (h *Handler) authSignUp(ctx context.Context, req *tg.AuthSignUpRequest) (tg
 		log.String("code_hash", req.PhoneCodeHash),
 		log.String("expected_code", phoneCode(phone)),
 	)
+
 	if err := h.checkCode(ctx, phone, req.PhoneCodeHash, phoneCode(phone)); err != nil {
 		return nil, err
 	}
@@ -203,11 +225,14 @@ func (h *Handler) authSignUp(ctx context.Context, req *tg.AuthSignUpRequest) (tg
 	if err != nil {
 		return nil, h.internal(ctx, "create user", err)
 	}
+
 	if err := h.bindCaller(ctx, u.ID); err != nil {
 		return nil, h.internal(ctx, "bind session", err)
 	}
+
 	log.For(h.lg).Debug(ctx, "auth.signUp succeeded",
 		log.String("phone", phone), log.Int64("user_id", u.ID))
+
 	return &tg.AuthAuthorization{User: toTGUser(u, true)}, nil
 }
 
@@ -232,17 +257,20 @@ func (h *Handler) authImportBotAuthorization(
 	if err != nil {
 		return nil, h.internal(ctx, "lookup bot", err)
 	}
+
 	if !found {
 		created, err := h.db.CreateBot(ctx, req.BotAuthToken, "", "Bot "+id)
 		if err != nil {
 			return nil, h.internal(ctx, "create bot", err)
 		}
+
 		bot = &created
 	}
 
 	if err := h.bindCaller(ctx, bot.ID); err != nil {
 		return nil, h.internal(ctx, "bind session", err)
 	}
+
 	return &tg.AuthAuthorization{User: toTGUser(*bot, true)}, nil
 }
 
@@ -255,20 +283,26 @@ func (h *Handler) authBindTempAuthKey(ctx context.Context, req *tg.AuthBindTempA
 	if err := h.requireDB(); err != nil {
 		return false, err
 	}
+
 	tempID, ok := callerKeyID(ctx)
 	if !ok {
 		return false, tgerr.New(400, "ENCRYPTED_MESSAGE_INVALID")
 	}
+
 	var permID [8]byte
+
 	binary.LittleEndian.PutUint64(permID[:], uint64(req.PermAuthKeyID)) // #nosec G115 -- bit reinterpretation.
+
 	expires := time.Unix(int64(req.ExpiresAt), 0)
 	if err := h.db.BindTempAuthKey(ctx, tempID, permID, expires); err != nil {
 		return false, h.internal(ctx, "bind temp key", err)
 	}
+
 	log.For(h.lg).Debug(ctx, "auth.bindTempAuthKey",
 		log.String("temp_key", hex.EncodeToString(tempID[:])),
 		log.String("perm_key", hex.EncodeToString(permID[:])),
 	)
+
 	return true, nil
 }
 
@@ -280,10 +314,12 @@ func (h *Handler) authLogOut(ctx context.Context) (*tg.AuthLoggedOut, error) {
 			if eff, err := h.effectiveKeyID(ctx, keyID); err == nil {
 				keyID = eff
 			}
+
 			if err := h.db.Unbind(ctx, keyID); err != nil {
 				return nil, h.internal(ctx, "unbind", err)
 			}
 		}
 	}
+
 	return &tg.AuthLoggedOut{}, nil
 }

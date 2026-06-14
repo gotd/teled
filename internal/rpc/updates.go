@@ -17,10 +17,12 @@ func (h *Handler) updatesGetState(ctx context.Context) (*tg.UpdatesState, error)
 	if err != nil {
 		return nil, err
 	}
+
 	st, err := h.db.GetState(ctx, caller.ID)
 	if err != nil {
 		return nil, h.internal(ctx, "get state", err)
 	}
+
 	return tgState(st), nil
 }
 
@@ -35,6 +37,7 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 	if err != nil {
 		return nil, h.internal(ctx, "get difference", err)
 	}
+
 	if len(entries) == 0 {
 		return &tg.UpdatesDifferenceEmpty{Date: int(time.Now().Unix()), Seq: 0}, nil
 	}
@@ -64,15 +67,18 @@ func (h *Handler) updatesGetDifference(ctx context.Context, req *tg.UpdatesGetDi
 		case teled.UpdateDelete:
 			ids := teled.DecodeDeleted(e.Extra)
 			msgIDs := make([]int, len(ids))
+
 			for i, id := range ids {
 				msgIDs[i] = int(id)
 			}
+
 			otherUpdates = append(otherUpdates, &tg.UpdateDeleteMessages{
 				Messages: msgIDs, Pts: e.Pts, PtsCount: e.PtsCount,
 			})
 		case teled.UpdateReadInbox:
 			peer, maxID := teled.DecodeRead(e.Extra)
 			userIDs[peer] = struct{}{}
+
 			otherUpdates = append(otherUpdates, &tg.UpdateReadHistoryInbox{
 				Peer: &tg.PeerUser{UserID: peer}, MaxID: int(maxID), Pts: e.Pts, PtsCount: e.PtsCount,
 			})
@@ -96,10 +102,12 @@ func (h *Handler) messageByGlobal(ctx context.Context, self int64, e teled.Updat
 	if e.GlobalID == nil {
 		return teled.Message{}, false
 	}
+
 	msg, ok, err := h.db.MessageByGlobal(ctx, self, *e.GlobalID)
 	if err != nil || !ok {
 		return teled.Message{}, false
 	}
+
 	return msg, true
 }
 
@@ -109,14 +117,17 @@ func (h *Handler) usersByIDs(ctx context.Context, self int64, ids map[int64]stru
 	for id := range ids {
 		list = append(list, id)
 	}
+
 	users, err := h.db.UsersByIDs(ctx, list)
 	if err != nil {
 		return nil, err
 	}
+
 	out := make([]tg.UserClass, 0, len(users))
 	for i := range users {
 		out = append(out, toTGUser(users[i], users[i].ID == self))
 	}
+
 	return out, nil
 }
 

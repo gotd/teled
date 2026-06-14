@@ -75,6 +75,7 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 	if err != nil {
 		return errors.Wrap(err, "failed to read private key")
 	}
+
 	k, err := key.ParsePrivateKey(privateKeyEncoded)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse private key")
@@ -87,20 +88,24 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 	defer cleanup()
 
 	var lc net.ListenConfig
+
 	ln, err := lc.Listen(ctx, "tcp", a.Addr())
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
 	}
+
 	store, err := objstore.NewFS(a.ObjectStoreDir, providers)
 	if err != nil {
 		return errors.Wrap(err, "object store")
 	}
 
 	const dc = 1
+
 	log.For(a.lg).Info(ctx, "Listening",
 		log.String("addr", a.Addr()),
 		log.Int("dc", dc),
 	)
+
 	srv := server.New(k, pool, store, server.Options{
 		DC:             dc,
 		Host:           a.Host,
@@ -110,6 +115,7 @@ func (a *application) serve(ctx context.Context, providers obs.Providers) error 
 		TracerProvider: providers.TracerProvider,
 		MeterProvider:  providers.MeterProvider,
 	})
+
 	return srv.Serve(ctx, ln)
 }
 

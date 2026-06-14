@@ -19,11 +19,14 @@ type stagedFile struct {
 func (s *stagedFile) put(part int, data []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	if s.parts == nil {
 		s.parts = map[int][]byte{}
 	}
+
 	cp := make([]byte, len(data))
 	copy(cp, data)
+
 	s.parts[part] = cp
 	if part > s.max {
 		s.max = part
@@ -34,10 +37,12 @@ func (s *stagedFile) put(part int, data []byte) {
 func (s *stagedFile) assemble() []byte {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	var out []byte
 	for i := 0; i <= s.max; i++ {
 		out = append(out, s.parts[i]...)
 	}
+
 	return out
 }
 
@@ -54,20 +59,24 @@ func newUploadStaging() *uploadStaging {
 func (u *uploadStaging) file(key stagingKey) *stagedFile {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+
 	f, ok := u.files[key]
 	if !ok {
 		f = &stagedFile{}
 		u.files[key] = f
 	}
+
 	return f
 }
 
 func (u *uploadStaging) take(key stagingKey) (*stagedFile, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+
 	f, ok := u.files[key]
 	if ok {
 		delete(u.files, key)
 	}
+
 	return f, ok
 }

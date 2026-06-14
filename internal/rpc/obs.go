@@ -21,6 +21,7 @@ type observability struct {
 
 func newObservability(p obs.Providers) observability {
 	m := p.Meter(instrumentationName)
+
 	return observability{
 		tracer: p.Tracer(instrumentationName),
 		requests: obs.Must(m.Int64Counter("teled.rpc.requests",

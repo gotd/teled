@@ -84,6 +84,7 @@ func (s *Server) Serve(ctx context.Context, l transport.Listener) error {
 				if errors.Is(err, net.ErrClosed) {
 					return nil
 				}
+
 				return errors.Wrap(err, "accept")
 			}
 
@@ -91,6 +92,7 @@ func (s *Server) Serve(ctx context.Context, l transport.Listener) error {
 				if err := s.serveConn(ctx, conn); err != nil && !isClientGone(err) {
 					log.For(s.log).Info(ctx, "Serving handler error", log.Error(err))
 				}
+
 				return nil
 			})
 		}
@@ -99,17 +101,20 @@ func (s *Server) Serve(ctx context.Context, l transport.Listener) error {
 		<-ctx.Done()
 		return l.Close()
 	})
+
 	return grp.Wait()
 }
 
 // isClientGone reports whether err is an expected client disconnect.
 func isClientGone(err error) bool {
 	var opErr *net.OpError
+
 	switch {
 	case errors.Is(err, io.EOF):
 		return true
 	case errors.As(err, &opErr) && (opErr.Op == "write" || opErr.Op == "read"):
 		return true
 	}
+
 	return websocket.CloseStatus(err) >= 0
 }

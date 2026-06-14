@@ -39,7 +39,9 @@ type testEnv struct {
 
 func newTestEnv(t *testing.T, ctx context.Context, g *tdsync.CancellableGroup) *testEnv {
 	t.Helper()
+
 	const dcID = 2
+
 	log := zaptest.NewLogger(t)
 
 	dsn := pgtest.New(t)
@@ -53,16 +55,19 @@ func newTestEnv(t *testing.T, ctx context.Context, g *tdsync.CancellableGroup) *
 	require.NoError(t, err)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
+
 	addr := ln.Addr().(*net.TCPAddr)
 
 	store, err := objstore.NewFS(t.TempDir(), obs.Providers{})
 	require.NoError(t, err)
+
 	handler := New(logzap.New(log.Named("rpc")), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
 	srv := mtproto.NewServer(mtproto.NewPrivateKey(rsaKey), mtproto.UnpackInvoke(handler), mtproto.ServerOptions{
 		DC:     dcID,
 		Keys:   db.NewKeyStore(pool),
 		Logger: logzap.New(log.Named("server")),
 	})
+
 	g.Go(func(ctx context.Context) error { return srv.Serve(ctx, transport.ListenCodec(nil, ln)) })
 
 	return &testEnv{dc: dcID, addr: addr, key: []telegram.PublicKey{srv.Key()}, db: database}
@@ -89,15 +94,18 @@ func (e *testEnv) runClient(ctx context.Context, t *testing.T, storage session.S
 
 func signUp(ctx context.Context, t *testing.T, api *tg.Client, phone, first string) *tg.User {
 	t.Helper()
+
 	sent, err := api.AuthSendCode(ctx, &tg.AuthSendCodeRequest{
 		PhoneNumber: phone, APIID: telegram.TestAppID, APIHash: telegram.TestAppHash, Settings: tg.CodeSettings{},
 	})
 	require.NoError(t, err)
+
 	code := sent.(*tg.AuthSentCode)
 	authResp, err := api.AuthSignUp(ctx, &tg.AuthSignUpRequest{
 		PhoneNumber: phone, PhoneCodeHash: code.PhoneCodeHash, FirstName: first,
 	})
 	require.NoError(t, err)
+
 	return authResp.(*tg.AuthAuthorization).User.(*tg.User)
 }
 
@@ -110,11 +118,13 @@ func inputPeer(u *tg.User) *tg.InputPeerUser {
 func TestDMSendAndHistory(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 	env := newTestEnv(t, ctx, g)
 
 	storageA := &session.StorageMemory{}
 	storageB := &session.StorageMemory{}
+
 	var userA, userB *tg.User
 
 	// B signs up first so A can address it.
@@ -131,6 +141,7 @@ func TestDMSendAndHistory(t *testing.T) {
 			Peer: inputPeer(userB), Message: "hello bob", RandomID: randomID,
 		})
 		require.NoError(t, err)
+
 		upd := updResp.(*tg.Updates)
 		require.IsType(t, &tg.UpdateMessageID{}, upd.Updates[0])
 		require.Equal(t, int64(randomID), upd.Updates[0].(*tg.UpdateMessageID).RandomID)
@@ -141,6 +152,7 @@ func TestDMSendAndHistory(t *testing.T) {
 		// A's own history shows the outgoing message.
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
 		require.NoError(t, err)
+
 		msgs := hist.(*tg.MessagesMessages).Messages
 		require.Len(t, msgs, 1)
 		require.True(t, msgs[0].(*tg.Message).Out)
@@ -150,6 +162,7 @@ func TestDMSendAndHistory(t *testing.T) {
 	env.runClient(ctx, t, storageB, func(api *tg.Client) {
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userA), Limit: 10})
 		require.NoError(t, err)
+
 		msgs := hist.(*tg.MessagesMessages).Messages
 		require.Len(t, msgs, 1)
 		m := msgs[0].(*tg.Message)
@@ -158,6 +171,7 @@ func TestDMSendAndHistory(t *testing.T) {
 
 		dlgs, err := api.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerEmpty{}})
 		require.NoError(t, err)
+
 		d := dlgs.(*tg.MessagesDialogs)
 		require.Len(t, d.Dialogs, 1)
 		require.Equal(t, 1, d.Dialogs[0].(*tg.Dialog).UnreadCount)
@@ -175,12 +189,14 @@ func TestDMSendAndHistory(t *testing.T) {
 	env.runClient(ctx, t, storageA, func(api *tg.Client) {
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
 		require.NoError(t, err)
+
 		id := hist.(*tg.MessagesMessages).Messages[0].(*tg.Message).ID
 
 		edited, err := api.MessagesEditMessage(ctx, &tg.MessagesEditMessageRequest{
 			Peer: inputPeer(userB), ID: id, Message: "edited",
 		})
 		require.NoError(t, err)
+
 		em := edited.(*tg.Updates).Updates[0].(*tg.UpdateEditMessage).Message.(*tg.Message)
 		require.Equal(t, "edited", em.Message)
 
@@ -194,6 +210,7 @@ func TestDMSendAndHistory(t *testing.T) {
 	})
 
 	g.Cancel()
+
 	if err := g.Wait(); err != nil {
 		require.ErrorIs(t, err, context.Canceled)
 	}
@@ -203,11 +220,14 @@ func TestDMSendAndHistory(t *testing.T) {
 func TestMediaRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 	env := newTestEnv(t, ctx, g)
 
 	storageA, storageB := &session.StorageMemory{}, &session.StorageMemory{}
+
 	var userB *tg.User
+
 	data := bytes.Repeat([]byte("teled-photo-bytes!"), 500) // ~9KB, one part.
 
 	env.runClient(ctx, t, storageB, func(api *tg.Client) { userB = signUp(ctx, t, api, "+14000000001", "Bob") })
@@ -226,6 +246,7 @@ func TestMediaRoundTrip(t *testing.T) {
 			RandomID: 42,
 		})
 		require.NoError(t, err)
+
 		msg := updResp.(*tg.Updates).Updates[1].(*tg.UpdateNewMessage).Message.(*tg.Message)
 		photo := msg.Media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
 
@@ -242,6 +263,7 @@ func TestMediaRoundTrip(t *testing.T) {
 		// The media must re-render when the message is fetched from history.
 		hist, err := api.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{Peer: inputPeer(userB), Limit: 10})
 		require.NoError(t, err)
+
 		msgs := hist.(*tg.MessagesMessages).Messages
 		require.Len(t, msgs, 1)
 		histMsg := msgs[0].(*tg.Message)
@@ -252,6 +274,7 @@ func TestMediaRoundTrip(t *testing.T) {
 	})
 
 	g.Cancel()
+
 	if err := g.Wait(); err != nil {
 		require.ErrorIs(t, err, context.Canceled)
 	}
@@ -262,11 +285,14 @@ func TestMediaRoundTrip(t *testing.T) {
 func TestUpdatesDifference(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 	env := newTestEnv(t, ctx, g)
 
 	storageA, storageB := &session.StorageMemory{}, &session.StorageMemory{}
+
 	var userA, userB *tg.User
+
 	var basePts int
 
 	env.runClient(ctx, t, storageA, func(api *tg.Client) { userA = signUp(ctx, t, api, "+13111111111", "Alice") })
@@ -276,6 +302,7 @@ func TestUpdatesDifference(t *testing.T) {
 		userB = signUp(ctx, t, api, "+13222222222", "Bob")
 		st, err := api.UpdatesGetState(ctx)
 		require.NoError(t, err)
+
 		basePts = st.Pts
 	})
 
@@ -295,6 +322,7 @@ func TestUpdatesDifference(t *testing.T) {
 			Pts: basePts, Date: 1, Qts: 0,
 		})
 		require.NoError(t, err)
+
 		d := diff.(*tg.UpdatesDifference)
 		require.Len(t, d.NewMessages, 2)
 		require.Greater(t, d.State.Pts, basePts)
@@ -305,10 +333,12 @@ func TestUpdatesDifference(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.IsType(t, &tg.UpdatesDifferenceEmpty{}, empty)
+
 		_ = userA
 	})
 
 	g.Cancel()
+
 	if err := g.Wait(); err != nil {
 		require.ErrorIs(t, err, context.Canceled)
 	}

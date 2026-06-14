@@ -25,14 +25,18 @@ func toTGUser(u teled.User, self bool) *tg.User {
 	if u.Username != "" {
 		user.Username = u.Username
 	}
+
 	if u.Phone != "" {
 		user.Phone = u.Phone
 	}
+
 	if u.IsBot {
 		user.Bot = true
 		user.BotInfoVersion = 1
 	}
+
 	user.SetFlags()
+
 	return user
 }
 
@@ -43,13 +47,16 @@ func (h *Handler) effectiveKeyID(ctx context.Context, keyID [8]byte) ([8]byte, e
 	if h.db == nil {
 		return keyID, nil
 	}
+
 	perm, ok, err := h.db.PermAuthKey(ctx, keyID)
 	if err != nil {
 		return keyID, err
 	}
+
 	if ok {
 		return perm, nil
 	}
+
 	return keyID, nil
 }
 
@@ -59,18 +66,22 @@ func (h *Handler) callerUser(ctx context.Context) (teled.User, bool, error) {
 	if !ok || h.db == nil {
 		return teled.User{}, false, nil
 	}
+
 	keyID, err := h.effectiveKeyID(ctx, keyID)
 	if err != nil {
 		return teled.User{}, false, err
 	}
+
 	userID, ok, err := h.db.SessionUserID(ctx, keyID)
 	if err != nil || !ok {
 		return teled.User{}, false, err
 	}
+
 	u, ok, err := h.db.UserByID(ctx, userID)
 	if err != nil || !ok {
 		return teled.User{}, false, err
 	}
+
 	return *u, true, nil
 }
 
@@ -84,9 +95,11 @@ func (h *Handler) resolvePeerUser(ctx context.Context, caller teled.User, peer t
 		if err != nil {
 			return teled.User{}, h.internal(ctx, "lookup peer", err)
 		}
+
 		if !ok || u.AccessHash != p.AccessHash {
 			return teled.User{}, tgerr.New(400, "PEER_ID_INVALID")
 		}
+
 		return *u, nil
 	default:
 		return teled.User{}, tgerr.New(400, "PEER_ID_INVALID")
@@ -106,10 +119,13 @@ func dmMessage(m teled.Message) *tg.Message {
 	if !m.EditDate.IsZero() {
 		msg.EditDate = int(m.EditDate.Unix())
 	}
+
 	if m.Media != nil {
 		msg.Media = photoMedia(*m.Media)
 	}
+
 	msg.SetFlags()
+
 	return msg
 }
 
@@ -121,9 +137,11 @@ func (h *Handler) bindCaller(ctx context.Context, userID int64) error {
 	if !ok {
 		return errors.New("no session on request")
 	}
+
 	keyID, err := h.effectiveKeyID(ctx, keyID)
 	if err != nil {
 		return err
 	}
+
 	return h.db.BindSession(ctx, keyID, userID)
 }

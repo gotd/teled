@@ -23,28 +23,33 @@ func (h *Handler) usersGetUsers(ctx context.Context, ids []tg.InputUserClass) ([
 	}
 
 	out := make([]tg.UserClass, 0, len(ids))
+
 	for _, id := range ids {
 		switch v := id.(type) {
 		case *tg.InputUserSelf:
 			if !loggedIn {
 				return nil, tgerr.New(401, "AUTH_KEY_UNREGISTERED")
 			}
+
 			out = append(out, toTGUser(caller, true))
 		case *tg.InputUser:
 			u, ok, err := h.db.UserByID(ctx, v.UserID)
 			if err != nil {
 				return nil, h.internal(ctx, "lookup user", err)
 			}
+
 			if !ok || u.AccessHash != v.AccessHash {
 				out = append(out, &tg.UserEmpty{ID: v.UserID})
 				continue
 			}
+
 			out = append(out, toTGUser(*u, loggedIn && u.ID == caller.ID))
 		default:
 			// InputUserEmpty / unsupported.
 			out = append(out, &tg.UserEmpty{})
 		}
 	}
+
 	return out, nil
 }
 
@@ -60,20 +65,24 @@ func (h *Handler) usersGetFullUser(ctx context.Context, id tg.InputUserClass) (*
 	}
 
 	var target teled.User
+
 	switch v := id.(type) {
 	case *tg.InputUserSelf:
 		if !loggedIn {
 			return nil, tgerr.New(401, "AUTH_KEY_UNREGISTERED")
 		}
+
 		target = caller
 	case *tg.InputUser:
 		u, ok, err := h.db.UserByID(ctx, v.UserID)
 		if err != nil {
 			return nil, h.internal(ctx, "lookup user", err)
 		}
+
 		if !ok || u.AccessHash != v.AccessHash {
 			return nil, tgerr.New(400, "USER_ID_INVALID")
 		}
+
 		target = *u
 	default:
 		return nil, tgerr.New(400, "USER_ID_INVALID")
@@ -87,6 +96,7 @@ func (h *Handler) usersGetFullUser(ctx context.Context, id tg.InputUserClass) (*
 		Settings:       tg.PeerSettings{},
 	}
 	full.SetFlags()
+
 	return &tg.UsersUserFull{
 		FullUser: full,
 		Users:    []tg.UserClass{toTGUser(target, self)},

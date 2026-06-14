@@ -18,11 +18,13 @@ import (
 func TestAccountUsername(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	g := tdsync.NewCancellableGroup(ctx)
 	env := newTestEnv(t, ctx, g)
 
 	storageA := &session.StorageMemory{}
 	storageB := &session.StorageMemory{}
+
 	var userA *tg.User
 
 	env.runClient(ctx, t, storageA, func(api *tg.Client) {

@@ -23,6 +23,7 @@ func (s *Server) read(ctx context.Context, conn transport.Conn, b *bin.Buffer) e
 
 func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code int32) error {
 	var buf bin.Buffer
+
 	buf.PutInt32(-code)
 
 	ctx, cancel := context.WithTimeout(ctx, s.writeTimeout)
@@ -31,6 +32,7 @@ func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code i
 	if err := conn.Send(ctx, &buf); err != nil {
 		return errors.Wrap(err, "send")
 	}
+
 	return nil
 }
 
@@ -38,14 +40,17 @@ func (s *Server) sendProtoError(ctx context.Context, conn transport.Conn, code i
 func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 	log.For(s.log).Debug(ctx, "Client connected")
 	s.obs.activeConns.Add(ctx, 1)
+
 	defer func() {
 		s.obs.activeConns.Add(ctx, -1)
 		s.registry.removeConn(conn)
 		_ = conn.Close()
+
 		log.For(s.log).Debug(ctx, "Client disconnected")
 	}()
 
 	b := new(bin.Buffer)
+
 	for {
 		if err := s.read(ctx, conn, b); err != nil {
 			return errors.Wrap(err, "read")
@@ -62,10 +67,12 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 			if err != nil {
 				return errors.Wrap(err, "lookup session")
 			}
+
 			if ok {
 				if err := s.rpcHandle(ctx, conn, b); err != nil {
 					return errors.Wrap(err, "handle")
 				}
+
 				continue
 			}
 
@@ -73,11 +80,13 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 			if err := s.sendProtoError(ctx, conn, codec.CodeAuthKeyNotFound); err != nil {
 				return errors.Wrap(err, "send AuthKeyNotFound")
 			}
+
 			continue
 		}
 
 		// Zero auth key id: start key exchange.
 		log.For(s.log).Debug(ctx, "Starting key exchange")
+
 		c := newBufferedConn(conn)
 		c.Push(b)
 
@@ -88,8 +97,10 @@ func (s *Server) serveConn(ctx context.Context, conn transport.Conn) error {
 				if sendErr := s.sendProtoError(ctx, c, exchangeErr.Code); sendErr != nil {
 					return errors.Wrapf(sendErr, "send proto error %v", exchangeErr.Code)
 				}
+
 				return nil
 			}
+
 			return errors.Wrap(err, "key exchange failed")
 		}
 

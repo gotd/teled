@@ -42,6 +42,7 @@ func (h *Handler) helpGetAppConfig(context.Context, int) (tg.HelpAppConfigClass,
 	if err != nil {
 		return nil, errors.Wrap(err, "decode")
 	}
+
 	return &tg.HelpAppConfig{Config: v}, nil
 }
 

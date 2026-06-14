@@ -22,11 +22,13 @@ func newSessionRegistry() *sessionRegistry {
 func (r *sessionRegistry) track(userID int64, s mtproto.Session) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	sessions, ok := r.m[userID]
 	if !ok {
 		sessions = map[int64]mtproto.Session{}
 		r.m[userID] = sessions
 	}
+
 	sessions[s.ID] = s
 }
 
@@ -34,13 +36,16 @@ func (r *sessionRegistry) track(userID int64, s mtproto.Session) {
 func (r *sessionRegistry) get(userID int64) []mtproto.Session {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	sessions := r.m[userID]
 	if len(sessions) == 0 {
 		return nil
 	}
+
 	out := make([]mtproto.Session, 0, len(sessions))
 	for _, s := range sessions {
 		out = append(out, s)
 	}
+
 	return out
 }

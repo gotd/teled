@@ -28,6 +28,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 			span.RecordError(rerr)
 			span.SetStatus(codes.Error, rerr.Error())
 		}
+
 		span.End()
 	}()
 	s.obs.messages.Add(ctx, 1)
@@ -41,6 +42,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 	if err != nil {
 		return errors.Wrap(err, "lookup session")
 	}
+
 	if !ok {
 		return errors.New("invalid session")
 	}
@@ -84,6 +86,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 // messages and dispatching RPC bodies to the handler.
 func (s *Server) handle(req *Request) error {
 	in := req.Buf
+
 	id, err := in.PeekID()
 	if err != nil {
 		return errors.Wrap(err, "peek id")
@@ -101,6 +104,7 @@ func (s *Server) handle(req *Request) error {
 		if err := pingReq.Decode(in); err != nil {
 			return err
 		}
+
 		return s.SendPong(req, pingReq.PingID)
 
 	case mt.PingRequestTypeID:
@@ -108,6 +112,7 @@ func (s *Server) handle(req *Request) error {
 		if err := pingReq.Decode(in); err != nil {
 			return err
 		}
+
 		return s.SendPong(req, pingReq.PingID)
 
 	case mt.GetFutureSaltsRequestTypeID:
@@ -115,6 +120,7 @@ func (s *Server) handle(req *Request) error {
 		if err := saltsReq.Decode(in); err != nil {
 			return err
 		}
+
 		return s.SendEternalSalt(req)
 
 	case mt.RPCDropAnswerRequestTypeID:
@@ -122,6 +128,7 @@ func (s *Server) handle(req *Request) error {
 		if err := drop.Decode(in); err != nil {
 			return err
 		}
+
 		return s.SendResult(req, &mt.RPCAnswerDroppedRunning{})
 
 	case proto.GZIPTypeID:
@@ -129,6 +136,7 @@ func (s *Server) handle(req *Request) error {
 		if err := content.Decode(in); err != nil {
 			return errors.Wrap(err, "gzip")
 		}
+
 		req.Buf = &bin.Buffer{Buf: content.Data}
 
 	case proto.MessageContainerTypeID:
@@ -147,6 +155,7 @@ func (s *Server) handle(req *Request) error {
 				RequestCtx: req.RequestCtx,
 			}))
 		}
+
 		return err
 	}
 
@@ -155,6 +164,7 @@ func (s *Server) handle(req *Request) error {
 		if errors.As(err, &rpcErr) {
 			return s.SendErr(req, rpcErr)
 		}
+
 		return err
 	}
 

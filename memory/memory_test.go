@@ -24,6 +24,7 @@ func TestObjectStore(t *testing.T) {
 	require.NoError(t, s.Delete(ctx, "nope")) // deleting missing is fine.
 
 	const key = "abcd1234"
+
 	require.NoError(t, s.Put(ctx, key, strings.NewReader("hello world"), 11, teled.PutOptions{}))
 
 	info, err := s.Stat(ctx, key)
@@ -40,11 +41,13 @@ func TestObjectStore(t *testing.T) {
 	// Range read, including truncation past the end.
 	rc, err = s.GetRange(ctx, key, 6, 5)
 	require.NoError(t, err)
+
 	got, _ = io.ReadAll(rc)
 	require.Equal(t, "world", string(got))
 
 	rc, err = s.GetRange(ctx, key, 6, 1000)
 	require.NoError(t, err)
+
 	got, _ = io.ReadAll(rc)
 	require.Equal(t, "world", string(got))
 
@@ -178,6 +181,7 @@ func TestDBMessagingFlow(t *testing.T) {
 	// Bob reads history.
 	_, err = d.ReadHistory(ctx, bob.ID, alice.ID, hist[0].LocalID)
 	require.NoError(t, err)
+
 	dialogs, _ = d.GetDialogs(ctx, bob.ID, 100)
 	require.Equal(t, 0, dialogs[0].UnreadCount)
 	require.Equal(t, hist[0].LocalID, dialogs[0].ReadInboxMaxID)
@@ -200,6 +204,7 @@ func TestDBMessagingFlow(t *testing.T) {
 	delRes, err := d.DeleteMessages(ctx, alice.ID, []int64{sent.SenderLocalID})
 	require.NoError(t, err)
 	require.Equal(t, []int64{sent.SenderLocalID}, delRes.LocalIDs)
+
 	hist, _ = d.GetHistory(ctx, alice.ID, bob.ID, 0, 100)
 	require.Empty(t, hist)
 }
@@ -240,6 +245,7 @@ func TestDBDifference(t *testing.T) {
 	entries, current, err := d.GetDifference(ctx, bob.ID, 0, 100)
 	require.NoError(t, err)
 	require.NotZero(t, current)
+
 	types := make([]string, len(entries))
 	for i, e := range entries {
 		types[i] = e.Type
@@ -248,6 +254,7 @@ func TestDBDifference(t *testing.T) {
 			assert.Greater(t, e.Pts, entries[i-1].Pts)
 		}
 	}
+
 	require.Equal(t, []string{teled.UpdateNew, teled.UpdateReadInbox, teled.UpdateEdit}, types)
 	peer, maxID := teled.DecodeRead(entries[1].Extra)
 	require.Equal(t, alice.ID, peer)
@@ -256,10 +263,12 @@ func TestDBDifference(t *testing.T) {
 	// Alice's log: new, edit, delete.
 	entries, _, err = d.GetDifference(ctx, alice.ID, 0, 100)
 	require.NoError(t, err)
+
 	types = types[:0]
 	for _, e := range entries {
 		types = append(types, e.Type)
 	}
+
 	require.Equal(t, []string{teled.UpdateNew, teled.UpdateEdit, teled.UpdateDelete}, types)
 	require.Equal(t, []int64{sent.SenderLocalID}, teled.DecodeDeleted(entries[2].Extra))
 
@@ -294,6 +303,7 @@ func TestDBFilesAndMediaMessage(t *testing.T) {
 	require.Len(t, hist, 1)
 	require.NotNil(t, hist[0].Media)
 	require.Equal(t, f.ID, hist[0].Media.ID)
+
 	_ = sent
 }
 

@@ -22,9 +22,11 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return errors.Wrap(err, "new migrator")
 	}
+
 	if _, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil); err != nil {
 		return errors.Wrap(err, "migrate")
 	}
+
 	return nil
 }
 
@@ -61,6 +63,7 @@ func New(pool *pgxpool.Pool, workers *river.Workers) (*Queue, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "new client")
 	}
+
 	return &Queue{client: client}, nil
 }
 

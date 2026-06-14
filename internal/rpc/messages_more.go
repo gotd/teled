@@ -38,15 +38,18 @@ func (h *Handler) messagesGetDialogs(ctx context.Context, req *tg.MessagesGetDia
 		if err != nil {
 			return nil, h.internal(ctx, "dialog peer", err)
 		}
+
 		if !ok {
 			continue
 		}
+
 		users = append(users, toTGUser(*peer, false))
 
 		top, err := h.db.GetHistory(ctx, caller.ID, dl.PeerUserID, 0, 1)
 		if err != nil {
 			return nil, h.internal(ctx, "dialog top", err)
 		}
+
 		if len(top) > 0 {
 			messages = append(messages, dmMessage(top[0]))
 		}
@@ -70,6 +73,7 @@ func (h *Handler) messagesReadHistory(ctx context.Context, req *tg.MessagesReadH
 	if err != nil {
 		return nil, err
 	}
+
 	peer, err := h.resolvePeerUser(ctx, caller, req.Peer)
 	if err != nil {
 		return nil, err
@@ -79,6 +83,7 @@ func (h *Handler) messagesReadHistory(ctx context.Context, req *tg.MessagesReadH
 	if err != nil {
 		return nil, h.internal(ctx, "read history", err)
 	}
+
 	return &tg.MessagesAffectedMessages{Pts: pts, PtsCount: 1}, nil
 }
 
@@ -88,6 +93,7 @@ func (h *Handler) messagesEditMessage(ctx context.Context, req *tg.MessagesEditM
 	if err != nil {
 		return nil, err
 	}
+
 	peer, err := h.resolvePeerUser(ctx, caller, req.Peer)
 	if err != nil {
 		return nil, err
@@ -98,6 +104,7 @@ func (h *Handler) messagesEditMessage(ctx context.Context, req *tg.MessagesEditM
 		if errors.Is(err, teled.ErrMessageID) {
 			return nil, tgerr.New(400, "MESSAGE_ID_INVALID")
 		}
+
 		return nil, h.internal(ctx, "edit message", err)
 	}
 
@@ -141,5 +148,6 @@ func (h *Handler) messagesDeleteMessages(ctx context.Context, req *tg.MessagesDe
 	if err != nil {
 		return nil, h.internal(ctx, "delete messages", err)
 	}
+
 	return &tg.MessagesAffectedMessages{Pts: res.Pts, PtsCount: res.PtsCount}, nil
 }

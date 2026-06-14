@@ -45,6 +45,7 @@ func TestServerEndToEnd(t *testing.T) {
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
+
 	addr := ln.Addr().(*net.TCPAddr)
 
 	config := &tg.Config{
@@ -70,6 +71,7 @@ func TestServerEndToEnd(t *testing.T) {
 		if err != nil {
 			return err
 		}
+
 		return s.SendResult(req, e)
 	}))
 
@@ -109,7 +111,9 @@ func TestServerEndToEnd(t *testing.T) {
 			if err != nil {
 				return errors.Wrap(err, "get config")
 			}
+
 			require.Equal(t, dcID, got.ThisDC)
+
 			return nil
 		})
 	})

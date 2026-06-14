@@ -22,13 +22,16 @@ func (h *Handler) accountCheckUsername(ctx context.Context, username string) (bo
 	if err != nil {
 		return false, err
 	}
+
 	if !usernameRe.MatchString(username) {
 		return false, tgerr.New(400, "USERNAME_INVALID")
 	}
+
 	u, ok, err := h.db.UserByUsername(ctx, username)
 	if err != nil {
 		return false, h.internal(ctx, "lookup username", err)
 	}
+
 	return !ok || u.ID == caller.ID, nil
 }
 
@@ -39,12 +42,15 @@ func (h *Handler) accountUpdateUsername(ctx context.Context, username string) (t
 	if err != nil {
 		return nil, err
 	}
+
 	if username != "" && !usernameRe.MatchString(username) {
 		return nil, tgerr.New(400, "USERNAME_INVALID")
 	}
+
 	if username == caller.Username {
 		return nil, tgerr.New(400, "USERNAME_NOT_MODIFIED")
 	}
+
 	if username != "" {
 		if u, ok, err := h.db.UserByUsername(ctx, username); err != nil {
 			return nil, h.internal(ctx, "lookup username", err)
@@ -57,7 +63,9 @@ func (h *Handler) accountUpdateUsername(ctx context.Context, username string) (t
 	if err != nil {
 		return nil, h.internal(ctx, "set username", err)
 	}
+
 	log.For(h.lg).Debug(ctx, "account.updateUsername",
 		log.Int64("user_id", caller.ID), log.String("username", username))
+
 	return toTGUser(updated, true), nil
 }

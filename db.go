@@ -32,6 +32,7 @@ func EncodeDeleted(ids []int64) []byte {
 func DecodeDeleted(extra []byte) []int64 {
 	var d deleteExtra
 	_ = json.Unmarshal(extra, &d)
+
 	return d.IDs
 }
 
@@ -46,6 +47,7 @@ func EncodeRead(peer, maxID int64) []byte {
 func DecodeRead(extra []byte) (peer, maxID int64) {
 	var r readExtra
 	_ = json.Unmarshal(extra, &r)
+
 	return r.Peer, r.MaxID
 }
 

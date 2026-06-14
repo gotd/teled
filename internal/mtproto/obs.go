@@ -21,6 +21,7 @@ type observability struct {
 
 func newObservability(p obs.Providers) observability {
 	m := p.Meter(instrumentationName)
+
 	return observability{
 		tracer: p.Tracer(instrumentationName),
 		activeConns: obs.Must(m.Int64UpDownCounter("teled.mtproto.connections.active",

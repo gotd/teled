@@ -34,16 +34,20 @@ LIMIT ` + strconv.Itoa(limit)
 	defer rows.Close()
 
 	var dialogs []teled.Dialog
+
 	for rows.Next() {
 		var d teled.Dialog
 		if err := rows.Scan(&d.PeerUserID, &d.TopMessageID, &d.UnreadCount, &d.ReadInboxMaxID); err != nil {
 			return nil, errors.Wrap(err, "scan")
 		}
+
 		dialogs = append(dialogs, d)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(err, "rows")
 	}
+
 	return dialogs, nil
 }
 
@@ -54,6 +58,7 @@ func (db *DB) ReadHistory(ctx context.Context, self, peer, maxID int64) (pts int
 	if err != nil {
 		return 0, errors.Wrap(err, "begin")
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if _, err := tx.Exec(ctx, `
@@ -69,12 +74,15 @@ WHERE r.global_id = m.global_id AND r.user_id = $1 AND NOT r.out AND r.message_i
 	if pts, err = allocatePts(ctx, tx, self, 1); err != nil {
 		return 0, errors.Wrap(err, "allocate")
 	}
+
 	extra := teled.EncodeRead(peer, maxID)
 	if err := logUpdate(ctx, tx, self, pts, 1, updReadInbox, nil, extra); err != nil {
 		return 0, errors.Wrap(err, "log read")
 	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return 0, errors.Wrap(err, "commit")
 	}
+
 	return pts, nil
 }

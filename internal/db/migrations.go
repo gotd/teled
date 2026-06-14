@@ -27,10 +27,12 @@ func Migrate(uri string) error {
 	if err != nil {
 		return errors.Wrap(err, "new migrate")
 	}
+
 	defer func() { _, _ = m.Close() }()
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return errors.Wrap(err, "up")
 	}
+
 	return nil
 }

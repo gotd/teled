@@ -19,6 +19,7 @@ func (h *Handler) requireStore() error {
 	if h.store == nil {
 		return tgerr.New(500, "NOT_IMPLEMENTED")
 	}
+
 	return nil
 }
 
@@ -28,10 +29,13 @@ func (h *Handler) uploadSaveFilePart(ctx context.Context, req *tg.UploadSaveFile
 	if err != nil {
 		return false, err
 	}
+
 	if len(req.Bytes) == 0 || len(req.Bytes) > maxPartSize {
 		return false, tgerr.New(400, "FILE_PART_INVALID")
 	}
+
 	h.staging.file(stagingKey{caller.ID, req.FileID}).put(req.FilePart, req.Bytes)
+
 	return true, nil
 }
 
@@ -41,10 +45,13 @@ func (h *Handler) uploadSaveBigFilePart(ctx context.Context, req *tg.UploadSaveB
 	if err != nil {
 		return false, err
 	}
+
 	if len(req.Bytes) == 0 || len(req.Bytes) > maxPartSize {
 		return false, tgerr.New(400, "FILE_PART_INVALID")
 	}
+
 	h.staging.file(stagingKey{caller.ID, req.FileID}).put(req.FilePart, req.Bytes)
+
 	return true, nil
 }
 
@@ -55,9 +62,11 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 	if err != nil {
 		return nil, err
 	}
+
 	if err := h.requireStore(); err != nil {
 		return nil, err
 	}
+
 	peer, err := h.resolvePeerUser(ctx, caller, req.Peer)
 	if err != nil {
 		return nil, err
@@ -67,6 +76,7 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 	if !ok {
 		return nil, tgerr.New(400, "MEDIA_INVALID")
 	}
+
 	staged, ok := h.staging.take(stagingKey{caller.ID, fileID})
 	if !ok {
 		return nil, tgerr.New(400, "FILE_REFERENCE_EMPTY")
@@ -74,6 +84,7 @@ func (h *Handler) messagesSendMedia(ctx context.Context, req *tg.MessagesSendMed
 
 	data := staged.assemble()
 	sum := sha256.Sum256(data)
+
 	key := hex.EncodeToString(sum[:])
 	if err := h.store.Put(ctx, key, bytes.NewReader(data), int64(len(data)), teled.PutOptions{}); err != nil {
 		return nil, h.internal(ctx, "store put", err)
@@ -123,6 +134,7 @@ func (h *Handler) uploadGetFile(ctx context.Context, req *tg.UploadGetFileReques
 	if _, err := h.requireCaller(ctx); err != nil {
 		return nil, err
 	}
+
 	if err := h.requireStore(); err != nil {
 		return nil, err
 	}
@@ -131,10 +143,12 @@ func (h *Handler) uploadGetFile(ctx context.Context, req *tg.UploadGetFileReques
 	if !ok {
 		return nil, tgerr.New(400, "LOCATION_INVALID")
 	}
+
 	file, ok, err := h.db.FileByID(ctx, id)
 	if err != nil {
 		return nil, h.internal(ctx, "file lookup", err)
 	}
+
 	if !ok || file.AccessHash != accessHash {
 		return nil, tgerr.New(400, "FILE_ID_INVALID")
 	}
@@ -143,7 +157,9 @@ func (h *Handler) uploadGetFile(ctx context.Context, req *tg.UploadGetFileReques
 	if err != nil {
 		return nil, h.internal(ctx, "get range", err)
 	}
+
 	defer func() { _ = rc.Close() }()
+
 	data, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, h.internal(ctx, "read", err)
@@ -163,9 +179,11 @@ func photoMedia(f teled.File) *tg.MessageMediaPhoto {
 		Sizes:         []tg.PhotoSizeClass{&tg.PhotoSize{Type: "x", W: 1, H: 1, Size: int(f.Size)}},
 	}
 	photo.SetFlags()
+
 	m := &tg.MessageMediaPhoto{}
 	m.SetPhoto(photo)
 	m.SetFlags()
+
 	return m
 }
 

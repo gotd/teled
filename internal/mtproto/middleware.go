@@ -25,6 +25,7 @@ func UnpackInvoke(next Handler) Handler {
 			obj peekIDObject
 			r   bin.Decoder
 		)
+
 		for {
 			switch id {
 			case tg.InvokeWithLayerRequestTypeID:
@@ -40,6 +41,7 @@ func UnpackInvoke(next Handler) Handler {
 			if err := r.Decode(req.Buf); err != nil {
 				return err
 			}
+
 			id = obj.TypeID
 		}
 	})
@@ -56,7 +58,9 @@ func (t *peekIDObject) Decode(b *bin.Buffer) error {
 	if err != nil {
 		return errors.Wrap(err, "peek id")
 	}
+
 	t.TypeID = id
+
 	return nil
 }
 

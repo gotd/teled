@@ -37,6 +37,7 @@ func (s *InMemoryKeys) Save(_ context.Context, key crypto.AuthKey) error {
 	s.mux.Lock()
 	s.keys[key.ID] = key
 	s.mux.Unlock()
+
 	return nil
 }
 
@@ -45,6 +46,7 @@ func (s *InMemoryKeys) Get(_ context.Context, id [8]byte) (crypto.AuthKey, bool,
 	s.mux.RLock()
 	key, ok := s.keys[id]
 	s.mux.RUnlock()
+
 	return key, ok, nil
 }
 
@@ -53,5 +55,6 @@ func (s *InMemoryKeys) Len() int {
 	s.mux.RLock()
 	n := len(s.keys)
 	s.mux.RUnlock()
+
 	return n
 }

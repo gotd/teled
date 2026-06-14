@@ -44,12 +44,14 @@ func (h *Handler) handleBotFather(ctx context.Context, caller, botFather teled.U
 		log.For(h.lg).Error(ctx, "botfather engine", log.Error(err))
 		return
 	}
+
 	for _, reply := range replies {
 		sent, err := h.db.SendMessage(ctx, botFather.ID, caller.ID, reply, 0, 0)
 		if err != nil {
 			log.For(h.lg).Error(ctx, "botfather reply", log.Error(err))
 			return
 		}
+
 		incoming := dmMessage(teled.Message{
 			LocalID:    sent.RecipientLocalID,
 			FromUserID: botFather.ID,
@@ -79,6 +81,7 @@ func (h *Handler) botFatherEngine(ctx context.Context, caller teled.User, text s
 	if err != nil {
 		return nil, err
 	}
+
 	switch state.Step {
 	case teled.BotFatherStepNewBotName:
 		return h.botFatherSetName(ctx, caller, text)
@@ -97,10 +100,12 @@ func botCommand(text string) (string, bool) {
 	if !strings.HasPrefix(text, "/") {
 		return "", false
 	}
+
 	head := strings.Fields(text)[0]
 	if at := strings.IndexByte(head, '@'); at >= 0 {
 		head = head[:at]
 	}
+
 	return strings.ToLower(head), true
 }
 
@@ -112,6 +117,7 @@ func (h *Handler) botFatherCommand(ctx context.Context, caller teled.User, cmd s
 		if err := h.db.SetBotFatherState(ctx, caller.ID, teled.BotFatherState{Step: teled.BotFatherStepNewBotName}); err != nil {
 			return nil, err
 		}
+
 		return []string{bfAskName}, nil
 	case "/mybots", "/token":
 		return h.botFatherListBots(ctx, caller)
@@ -120,24 +126,30 @@ func (h *Handler) botFatherCommand(ctx context.Context, caller teled.User, cmd s
 		if err != nil {
 			return nil, err
 		}
+
 		if len(bots) == 0 {
 			return []string{bfNoBots}, nil
 		}
+
 		if err := h.db.SetBotFatherState(ctx, caller.ID, teled.BotFatherState{Step: teled.BotFatherStepRevokeSelect}); err != nil {
 			return nil, err
 		}
+
 		return []string{bfAskRevoke}, nil
 	case "/cancel":
 		state, err := h.db.BotFatherState(ctx, caller.ID)
 		if err != nil {
 			return nil, err
 		}
+
 		if state.Step == "" {
 			return []string{bfNothingToDo}, nil
 		}
+
 		if err := h.db.ClearBotFatherState(ctx, caller.ID); err != nil {
 			return nil, err
 		}
+
 		return []string{bfCancelled}, nil
 	default:
 		return []string{bfNotUnderstood}, nil
@@ -149,14 +161,19 @@ func (h *Handler) botFatherListBots(ctx context.Context, caller teled.User) ([]s
 	if err != nil {
 		return nil, err
 	}
+
 	if len(bots) == 0 {
 		return []string{bfNoBots}, nil
 	}
+
 	var b strings.Builder
+
 	b.WriteString("Here are your bots:\n")
+
 	for _, bot := range bots {
 		fmt.Fprintf(&b, "\n@%s\n%s", bot.Username, bot.BotToken)
 	}
+
 	return []string{b.String()}, nil
 }
 
@@ -164,12 +181,14 @@ func (h *Handler) botFatherSetName(ctx context.Context, caller teled.User, name 
 	if !validBotName(name) {
 		return []string{bfBadName}, nil
 	}
+
 	if err := h.db.SetBotFatherState(ctx, caller.ID, teled.BotFatherState{
 		Step:      teled.BotFatherStepNewBotUsername,
 		DraftName: name,
 	}); err != nil {
 		return nil, err
 	}
+
 	return []string{bfAskUsername}, nil
 }
 
@@ -189,10 +208,12 @@ func (h *Handler) botFatherCreate(ctx context.Context, caller teled.User, name, 
 	if err != nil {
 		return nil, err
 	}
+
 	bot, err := h.db.CreateOwnedBot(ctx, username, name, caller.ID, secret)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := h.db.ClearBotFatherState(ctx, caller.ID); err != nil {
 		return nil, err
 	}
@@ -207,17 +228,21 @@ func (h *Handler) botFatherCreate(ctx context.Context, caller teled.User, name, 
 
 func (h *Handler) botFatherRevoke(ctx context.Context, caller teled.User, username string) ([]string, error) {
 	username = strings.TrimPrefix(username, "@")
+
 	bots, err := h.db.BotsByOwner(ctx, caller.ID)
 	if err != nil {
 		return nil, err
 	}
+
 	var target *teled.User
+
 	for i := range bots {
 		if strings.EqualFold(bots[i].Username, username) {
 			target = &bots[i]
 			break
 		}
 	}
+
 	if target == nil {
 		return []string{"You don't own a bot with that username. Send the username of one of your bots."}, nil
 	}
@@ -226,13 +251,16 @@ func (h *Handler) botFatherRevoke(ctx context.Context, caller teled.User, userna
 	if err != nil {
 		return nil, err
 	}
+
 	token := fmt.Sprintf("%d:%s", target.ID, secret)
 	if err := h.db.SetBotToken(ctx, target.ID, token); err != nil {
 		return nil, err
 	}
+
 	if err := h.db.ClearBotFatherState(ctx, caller.ID); err != nil {
 		return nil, err
 	}
+
 	return []string{fmt.Sprintf(
 		"Token revoked. The previous token has stopped working.\n\n"+
 			"New token for @%s:\n%s", target.Username, token,
@@ -249,20 +277,25 @@ func validBotName(name string) bool {
 func validBotUsername(u string) (string, bool) {
 	const help = "Sorry, this username is invalid. A username must be 5-32 characters long, " +
 		"start with a letter, use only letters, digits and underscores, and end in `bot`."
+
 	if len(u) < 5 || len(u) > 32 {
 		return help, false
 	}
+
 	if !isASCIILetter(u[0]) {
 		return help, false
 	}
+
 	for i := 0; i < len(u); i++ {
 		if !isUsernameChar(u[i]) {
 			return help, false
 		}
 	}
+
 	if !strings.HasSuffix(strings.ToLower(u), "bot") {
 		return help, false
 	}
+
 	return "", true
 }
 
@@ -282,5 +315,6 @@ func botTokenSecret() (string, error) {
 	if _, err := rand.Read(raw[:]); err != nil {
 		return "", err
 	}
+
 	return base64.RawURLEncoding.EncodeToString(raw[:]), nil
 }

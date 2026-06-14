@@ -48,7 +48,9 @@ func TestStartupStubsEncode(t *testing.T) {
 	for i, fn := range encoders {
 		res, err := fn()
 		require.NoErrorf(t, err, "handler %d returned error", i)
+
 		var b bin.Buffer
+
 		require.NoErrorf(t, res.Encode(&b), "handler %d failed to encode", i)
 		require.NotZerof(t, b.Len(), "handler %d encoded to empty buffer", i)
 	}

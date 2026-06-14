@@ -71,6 +71,7 @@ func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts 
 	if opts.DC == 0 {
 		opts.DC = 1
 	}
+
 	lg := log.OrNop(opts.Logger)
 	providers := obs.Providers{
 		TracerProvider: opts.TracerProvider,
@@ -78,11 +79,14 @@ func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts 
 	}
 
 	database := opts.DB
+
 	var keys mtproto.KeyStorage
+
 	if pool != nil {
 		if database == nil {
 			database = db.New(pool)
 		}
+
 		keys = db.NewKeyStore(pool)
 	} else {
 		keys = mtproto.NewInMemoryKeys()
@@ -95,6 +99,7 @@ func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts 
 		Keys:      keys,
 		Providers: providers,
 	})
+
 	return &Server{srv: srv, dc: opts.DC, obfuscated: opts.Obfuscated}
 }
 
@@ -106,6 +111,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	} else {
 		l = transport.ListenCodec(nil, ln)
 	}
+
 	return s.srv.Serve(ctx, l)
 }
 

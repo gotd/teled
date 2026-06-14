@@ -35,7 +35,9 @@ import (
 func TestSessionSurvivesRestart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
 	const dcID = 2
+
 	lg := zaptest.NewLogger(t)
 
 	dsn := pgtest.New(t)
@@ -55,6 +57,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 	boot := func() (*net.TCPAddr, []telegram.PublicKey, func()) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
+
 		addr := ln.Addr().(*net.TCPAddr)
 
 		handler := New(logzap.New(lg.Named("rpc")), database, store, dcID, addr.IP.String(), addr.Port, obs.Providers{})
@@ -67,6 +70,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 		srvCtx, srvCancel := context.WithCancel(ctx)
 		g := tdsync.NewCancellableGroup(srvCtx)
 		g.Go(func(ctx context.Context) error { return srv.Serve(ctx, transport.ListenCodec(nil, ln)) })
+
 		return addr, []telegram.PublicKey{srv.Key()}, func() { srvCancel(); _ = ln.Close() }
 	}
 
@@ -92,6 +96,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 	}
 
 	storage := &session.StorageMemory{}
+
 	var userID int64
 
 	// First boot: sign up and capture the account id.

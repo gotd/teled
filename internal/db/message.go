@@ -26,6 +26,7 @@ func allocate(ctx context.Context, tx pgx.Tx, userID int64) (localID int64, pts 
 		`UPDATE users SET last_message_id = last_message_id + 1, pts = pts + 1
 		 WHERE id = $1 RETURNING last_message_id, pts`, userID,
 	).Scan(&localID, &pts)
+
 	return localID, pts, err
 }
 
@@ -34,6 +35,7 @@ func allocatePts(ctx context.Context, tx pgx.Tx, userID int64, count int) (pts i
 	err = tx.QueryRow(ctx,
 		`UPDATE users SET pts = pts + $2 WHERE id = $1 RETURNING pts`, userID, count,
 	).Scan(&pts)
+
 	return pts, err
 }
 
@@ -43,6 +45,7 @@ func logUpdate(ctx context.Context, tx pgx.Tx, userID int64, pts, ptsCount int, 
 		`INSERT INTO updates_log (user_id, pts, pts_count, type, global_id, extra)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
 		userID, pts, ptsCount, typ, globalID, extra)
+
 	return err
 }
 
@@ -54,6 +57,7 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	if err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "begin")
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var sent teled.SentMessage
@@ -63,6 +67,7 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	if mediaFileID != 0 {
 		media = &mediaFileID
 	}
+
 	if err := tx.QueryRow(ctx,
 		`INSERT INTO messages (from_user_id, peer_user_id, text, random_id, media_file_id)
 		 VALUES ($1, $2, $3, $4, $5) RETURNING global_id, date`,
@@ -75,9 +80,11 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	if err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "allocate sender")
 	}
+
 	if err := insertRef(ctx, tx, fromID, sent.SenderLocalID, sent.GlobalID, true, false); err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "sender ref")
 	}
+
 	if err := logUpdate(ctx, tx, fromID, sent.SenderPts, 1, updNewMessage, &sent.GlobalID, nil); err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "log sender")
 	}
@@ -87,9 +94,11 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 		if err != nil {
 			return teled.SentMessage{}, errors.Wrap(err, "allocate recipient")
 		}
+
 		if err := insertRef(ctx, tx, peerID, sent.RecipientLocalID, sent.GlobalID, false, true); err != nil {
 			return teled.SentMessage{}, errors.Wrap(err, "recipient ref")
 		}
+
 		if err := logUpdate(ctx, tx, peerID, sent.RecipientPts, 1, updNewMessage, &sent.GlobalID, nil); err != nil {
 			return teled.SentMessage{}, errors.Wrap(err, "log recipient")
 		}
@@ -98,6 +107,7 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	if err := tx.Commit(ctx); err != nil {
 		return teled.SentMessage{}, errors.Wrap(err, "commit")
 	}
+
 	return sent, nil
 }
 
@@ -106,6 +116,7 @@ func insertRef(ctx context.Context, tx pgx.Tx, userID, localID, globalID int64, 
 		`INSERT INTO message_refs (user_id, message_id, global_id, out, unread)
 		 VALUES ($1, $2, $3, $4, $5)`,
 		userID, localID, globalID, out, unread)
+
 	return err
 }
 
@@ -137,15 +148,18 @@ func scanMessage(rows pgx.Rows) (teled.Message, error) {
 		sha       []byte
 		fileRef   []byte
 	)
+
 	if err := rows.Scan(
 		&m.LocalID, &m.Out, &m.GlobalID, &m.FromUserID, &m.Text, &m.Date, &editDate, &m.RandomID, &m.PeerUserID,
 		&fileID, &ownerID, &accessH, &objectKey, &size, &mime, &sha, &fileRef, &kind, &createdAt,
 	); err != nil {
 		return teled.Message{}, err
 	}
+
 	if editDate != nil {
 		m.EditDate = *editDate
 	}
+
 	if fileID != nil {
 		m.Media = &teled.File{
 			ID:            *fileID,
@@ -160,6 +174,7 @@ func scanMessage(rows pgx.Rows) (teled.Message, error) {
 			CreatedAt:     deref(createdAt),
 		}
 	}
+
 	return m, nil
 }
 
@@ -169,6 +184,7 @@ func deref[T any](p *T) T {
 		var zero T
 		return zero
 	}
+
 	return *p
 }
 
@@ -177,10 +193,13 @@ func deref[T any](p *T) T {
 func (db *DB) GetHistory(ctx context.Context, self, peer, offsetID int64, limit int) ([]teled.Message, error) {
 	q := historySelect
 	args := []any{self, peer}
+
 	if offsetID > 0 {
 		q += " AND r.message_id < $3"
+
 		args = append(args, offsetID)
 	}
+
 	q += " ORDER BY r.message_id DESC LIMIT " + strconv.Itoa(limit)
 
 	rows, err := db.pool.Query(ctx, q, args...)
@@ -190,15 +209,19 @@ func (db *DB) GetHistory(ctx context.Context, self, peer, offsetID int64, limit 
 	defer rows.Close()
 
 	var msgs []teled.Message
+
 	for rows.Next() {
 		m, err := scanMessage(rows)
 		if err != nil {
 			return nil, errors.Wrap(err, "scan")
 		}
+
 		msgs = append(msgs, m)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, errors.Wrap(err, "rows")
 	}
+
 	return msgs, nil
 }

@@ -17,6 +17,7 @@ func Open(ctx context.Context, uri string, providers obs.Providers) (*pgxpool.Po
 	if err != nil {
 		return nil, errors.Wrap(err, "parse config")
 	}
+
 	cfg.MaxConns = 20
 	cfg.MinConns = 0
 	cfg.MaxConnLifetime = 2 * time.Minute
@@ -28,5 +29,6 @@ func Open(ctx context.Context, uri string, providers obs.Providers) (*pgxpool.Po
 	if err != nil {
 		return nil, errors.Wrap(err, "new pool")
 	}
+
 	return pool, nil
 }

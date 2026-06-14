@@ -56,6 +56,7 @@ func (t queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.
 		attribute.String("db.operation", op),
 		attribute.String("db.statement", data.SQL),
 	)
+
 	return context.WithValue(ctx, queryTraceKey{}, &queryTraceData{span: span, start: time.Now(), op: op})
 }
 
@@ -65,10 +66,12 @@ func (t queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.Tr
 	if !ok {
 		return
 	}
+
 	if data.Err != nil {
 		d.span.RecordError(data.Err)
 		d.span.SetStatus(codes.Error, data.Err.Error())
 	}
+
 	d.span.End()
 	t.queryDuration.Record(ctx, time.Since(d.start).Seconds(),
 		metric.WithAttributes(attribute.String("db.operation", d.op)))
@@ -81,8 +84,10 @@ func sqlOperation(sql string) string {
 	if sql == "" {
 		return "UNKNOWN"
 	}
+
 	if i := strings.IndexAny(sql, " \t\r\n"); i > 0 {
 		sql = sql[:i]
 	}
+
 	return strings.ToUpper(sql)
 }

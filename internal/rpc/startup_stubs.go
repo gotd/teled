@@ -27,7 +27,9 @@ func (h *Handler) messagesGetDefaultTagReactions(context.Context, int64) (tg.Mes
 	return &tg.MessagesReactionsNotModified{}, nil
 }
 
-func (h *Handler) messagesGetSavedReactionTags(context.Context, *tg.MessagesGetSavedReactionTagsRequest) (tg.MessagesSavedReactionTagsClass, error) {
+func (h *Handler) messagesGetSavedReactionTags(
+	context.Context, *tg.MessagesGetSavedReactionTagsRequest,
+) (tg.MessagesSavedReactionTagsClass, error) {
 	return &tg.MessagesSavedReactionTagsNotModified{}, nil
 }
 
@@ -162,5 +164,6 @@ func (h *Handler) accountUpdateProfile(ctx context.Context, _ *tg.AccountUpdateP
 	if err != nil {
 		return nil, err
 	}
+
 	return toTGUser(caller, true), nil
 }

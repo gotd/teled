@@ -30,6 +30,7 @@ func NewFS(base string, providers obs.Providers) (*FS, error) {
 	if err := os.MkdirAll(base, 0o750); err != nil {
 		return nil, errors.Wrap(err, "mkdir base")
 	}
+
 	return &FS{base: base, obs: newObservability(providers)}, nil
 }
 
@@ -38,6 +39,7 @@ func (s *FS) path(key string) string {
 	if len(key) >= 4 {
 		return filepath.Join(s.base, key[0:2], key[2:4], key)
 	}
+
 	return filepath.Join(s.base, "_", key)
 }
 
@@ -55,7 +57,9 @@ func (s *FS) Put(ctx context.Context, key string, r io.Reader, _ int64, _ teled.
 	if err != nil {
 		return errors.Wrap(err, "create temp")
 	}
+
 	tmpName := tmp.Name()
+
 	defer func() {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName) // No-op once renamed.
@@ -64,12 +68,15 @@ func (s *FS) Put(ctx context.Context, key string, r io.Reader, _ int64, _ teled.
 	if _, err := io.Copy(tmp, r); err != nil {
 		return errors.Wrap(err, "copy")
 	}
+
 	if err := tmp.Close(); err != nil {
 		return errors.Wrap(err, "close temp")
 	}
+
 	if err := os.Rename(tmpName, dst); err != nil {
 		return errors.Wrap(err, "rename")
 	}
+
 	return nil
 }
 
@@ -82,6 +89,7 @@ func (s *FS) Get(ctx context.Context, key string) (_ io.ReadCloser, rerr error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "open")
 	}
+
 	return f, nil
 }
 
@@ -94,10 +102,12 @@ func (s *FS) GetRange(ctx context.Context, key string, offset, length int64) (_ 
 	if err != nil {
 		return nil, errors.Wrap(err, "open")
 	}
+
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
 		_ = f.Close()
 		return nil, errors.Wrap(err, "seek")
 	}
+
 	return &limitedFile{f: f, r: io.LimitReader(f, length)}, nil
 }
 
@@ -110,6 +120,7 @@ func (s *FS) Stat(ctx context.Context, key string) (_ teled.ObjectInfo, rerr err
 	if err != nil {
 		return teled.ObjectInfo{}, errors.Wrap(err, "stat")
 	}
+
 	return teled.ObjectInfo{Size: fi.Size()}, nil
 }
 
@@ -121,6 +132,7 @@ func (s *FS) Delete(ctx context.Context, key string) (rerr error) {
 	if err := os.Remove(s.path(key)); err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "remove")
 	}
+
 	return nil
 }
 

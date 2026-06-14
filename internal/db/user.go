@@ -41,10 +41,12 @@ func scanUser(row pgx.Row, u *teled.User) error {
 func genAccessHash() int64 {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
+
 	h := int64(binary.LittleEndian.Uint64(b[:])) // #nosec G115 -- bit reinterpretation.
 	if h == 0 {
 		h = 1
 	}
+
 	return h
 }
 
@@ -64,6 +66,7 @@ func (db *DB) CreateUser(ctx context.Context, phone, firstName, lastName string)
 	if err := scanUser(db.pool.QueryRow(ctx, sql, args...), &u); err != nil {
 		return teled.User{}, gerrors.Wrap(err, "insert")
 	}
+
 	return u, nil
 }
 
@@ -72,10 +75,12 @@ func (db *DB) CreateUser(ctx context.Context, phone, firstName, lastName string)
 func (db *DB) CreateBot(ctx context.Context, token, username, firstName string) (teled.User, error) {
 	cols := []string{"access_hash", "bot_token", "first_name", "is_bot"}
 	vals := []any{genAccessHash(), token, firstName, true}
+
 	if username != "" {
 		cols = append(cols, "username")
 		vals = append(vals, username)
 	}
+
 	q := psql.Insert("users").
 		Columns(cols...).
 		Values(vals...).
@@ -90,6 +95,7 @@ func (db *DB) CreateBot(ctx context.Context, token, username, firstName string) 
 	if err := scanUser(db.pool.QueryRow(ctx, sql, args...), &u); err != nil {
 		return teled.User{}, gerrors.Wrap(err, "insert")
 	}
+
 	return u, nil
 }
 
@@ -106,6 +112,7 @@ func (db *DB) CreateOwnedBot(ctx context.Context, username, firstName string, ow
 	if err != nil {
 		return teled.User{}, gerrors.Wrap(err, "begin")
 	}
+
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var id int64
@@ -118,7 +125,9 @@ func (db *DB) CreateOwnedBot(ctx context.Context, username, firstName string, ow
 	}
 
 	token := strconv.FormatInt(id, 10) + ":" + secret
+
 	var u teled.User
+
 	if err := scanUser(tx.QueryRow(ctx,
 		`UPDATE users SET bot_token = $1 WHERE id = $2 RETURNING `+strings.Join(userColumns, ", "),
 		token, id,
@@ -129,6 +138,7 @@ func (db *DB) CreateOwnedBot(ctx context.Context, username, firstName string, ow
 	if err := tx.Commit(ctx); err != nil {
 		return teled.User{}, gerrors.Wrap(err, "commit")
 	}
+
 	return u, nil
 }
 
@@ -140,6 +150,7 @@ func (db *DB) SetBotToken(ctx context.Context, botID int64, token string) error 
 	); err != nil {
 		return gerrors.Wrap(err, "update")
 	}
+
 	return nil
 }
 
@@ -147,6 +158,7 @@ func (db *DB) SetBotToken(ctx context.Context, botID int64, token string) error 
 func (db *DB) BotsByOwner(ctx context.Context, ownerID int64) ([]teled.User, error) {
 	q := psql.Select(userColumns...).From("users").
 		Where("bot_owner_id = ?", ownerID).OrderBy("id")
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return nil, gerrors.Wrap(err, "build query")
@@ -159,21 +171,26 @@ func (db *DB) BotsByOwner(ctx context.Context, ownerID int64) ([]teled.User, err
 	defer rows.Close()
 
 	var bots []teled.User
+
 	for rows.Next() {
 		var u teled.User
 		if err := scanUser(rows, &u); err != nil {
 			return nil, gerrors.Wrap(err, "scan")
 		}
+
 		bots = append(bots, u)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, gerrors.Wrap(err, "rows")
 	}
+
 	return bots, nil
 }
 
 func (db *DB) userBy(ctx context.Context, where string, arg any) (*teled.User, bool, error) {
 	q := psql.Select(userColumns...).From("users").Where(where, arg)
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return nil, false, gerrors.Wrap(err, "build query")
@@ -184,8 +201,10 @@ func (db *DB) userBy(ctx context.Context, where string, arg any) (*teled.User, b
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, false, nil
 		}
+
 		return nil, false, gerrors.Wrap(err, "scan")
 	}
+
 	return &u, true, nil
 }
 
@@ -211,6 +230,7 @@ func (db *DB) SetUsername(ctx context.Context, userID int64, username string) (t
 	if username != "" {
 		arg = username
 	}
+
 	var u teled.User
 	if err := scanUser(db.pool.QueryRow(ctx,
 		`UPDATE users SET username = $1 WHERE id = $2 RETURNING `+strings.Join(userColumns, ", "),
@@ -219,8 +239,10 @@ func (db *DB) SetUsername(ctx context.Context, userID int64, username string) (t
 		if errors.Is(err, pgx.ErrNoRows) {
 			return teled.User{}, gerrors.Errorf("user %d not found", userID)
 		}
+
 		return teled.User{}, gerrors.Wrap(err, "update")
 	}
+
 	return u, nil
 }
 
@@ -229,7 +251,9 @@ func (db *DB) UsersByIDs(ctx context.Context, ids []int64) ([]teled.User, error)
 	if len(ids) == 0 {
 		return nil, nil
 	}
+
 	q := psql.Select(userColumns...).From("users").Where(sq.Eq{"id": ids})
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return nil, gerrors.Wrap(err, "build query")
@@ -242,15 +266,19 @@ func (db *DB) UsersByIDs(ctx context.Context, ids []int64) ([]teled.User, error)
 	defer rows.Close()
 
 	var users []teled.User
+
 	for rows.Next() {
 		var u teled.User
 		if err := scanUser(rows, &u); err != nil {
 			return nil, gerrors.Wrap(err, "scan")
 		}
+
 		users = append(users, u)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, gerrors.Wrap(err, "rows")
 	}
+
 	return users, nil
 }

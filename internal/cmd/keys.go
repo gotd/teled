@@ -18,18 +18,23 @@ func formatPemAsConstChar(data []byte) string {
 	b.WriteRune('\n')
 
 	lines := strings.Split(string(data), "\n")
+
 	var nonBlankLines []string
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
+
 		nonBlankLines = append(nonBlankLines, line)
 	}
 
 	lastLineIndex := len(nonBlankLines) - 1
+
 	for i, line := range nonBlankLines {
 		b.WriteString(strings.TrimSpace(line))
+
 		switch i {
 		case lastLineIndex:
 			b.WriteString(`" };`)
@@ -47,6 +52,7 @@ func newKeys(_ *application) *cobra.Command {
 		Use:   "keys",
 		Short: "Keys management",
 	}
+
 	var keysGenerateCmd = &cobra.Command{
 		Use:   "generate",
 		Short: "Generate new RSA private key",
@@ -84,6 +90,8 @@ func newKeys(_ *application) *cobra.Command {
 			return nil
 		},
 	}
+
 	keysCmd.AddCommand(keysGenerateCmd)
+
 	return keysCmd
 }

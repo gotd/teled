@@ -65,9 +65,11 @@ func (h *Handler) messagesSendMessage(ctx context.Context, req *tg.MessagesSendM
 func (h *Handler) push(ctx context.Context, userID int64, users []tg.UserClass, date int, updates ...tg.UpdateClass) {
 	server := serverFrom(ctx)
 	sessions := h.sessions.get(userID)
+
 	if server == nil || len(sessions) == 0 {
 		return
 	}
+
 	wrap := &tg.Updates{Updates: updates, Users: users, Date: date}
 	for _, s := range sessions {
 		if err := server.Send(ctx, s, proto.MessageFromServer, wrap); err != nil {
@@ -81,6 +83,7 @@ func (h *Handler) deliver(ctx context.Context, from, peer teled.User, sent teled
 	if sent.SelfChat {
 		return
 	}
+
 	incoming := dmMessage(teled.Message{
 		LocalID:    sent.RecipientLocalID,
 		FromUserID: from.ID,
@@ -102,6 +105,7 @@ func (h *Handler) messagesGetHistory(ctx context.Context, req *tg.MessagesGetHis
 	if err != nil {
 		return nil, err
 	}
+
 	peer, err := h.resolvePeerUser(ctx, caller, req.Peer)
 	if err != nil {
 		return nil, err
@@ -121,6 +125,7 @@ func (h *Handler) messagesGetHistory(ctx context.Context, req *tg.MessagesGetHis
 	for i := range msgs {
 		out = append(out, dmMessage(msgs[i]))
 	}
+
 	return &tg.MessagesMessages{
 		Messages: out,
 		Users:    []tg.UserClass{toTGUser(caller, true), toTGUser(peer, false)},
@@ -132,13 +137,16 @@ func (h *Handler) contactsResolveUsername(ctx context.Context, req *tg.ContactsR
 	if err := h.requireDB(); err != nil {
 		return nil, err
 	}
+
 	u, ok, err := h.db.UserByUsername(ctx, req.Username)
 	if err != nil {
 		return nil, h.internal(ctx, "resolve username", err)
 	}
+
 	if !ok {
 		return nil, tgerr.New(400, "USERNAME_NOT_OCCUPIED")
 	}
+
 	return &tg.ContactsResolvedPeer{
 		Peer:  &tg.PeerUser{UserID: u.ID},
 		Users: []tg.UserClass{toTGUser(*u, false)},

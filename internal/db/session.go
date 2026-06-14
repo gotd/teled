@@ -20,15 +20,18 @@ func (db *DB) BindSession(ctx context.Context, keyID [8]byte, userID int64) erro
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
 // SessionUserID returns the user bound to the given auth key, if any.
 func (db *DB) SessionUserID(ctx context.Context, keyID [8]byte) (userID int64, ok bool, err error) {
 	q := psql.Select("user_id").From("sessions").Where("key_id = ?", keyID[:])
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return 0, false, gerrors.Wrap(err, "build query")
@@ -38,21 +41,26 @@ func (db *DB) SessionUserID(ctx context.Context, keyID [8]byte) (userID int64, o
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, false, nil
 		}
+
 		return 0, false, gerrors.Wrap(err, "scan")
 	}
+
 	return userID, true, nil
 }
 
 // Unbind removes the user binding for an auth key (logout).
 func (db *DB) Unbind(ctx context.Context, keyID [8]byte) error {
 	q := psql.Delete("sessions").Where("key_id = ?", keyID[:])
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
@@ -67,9 +75,11 @@ func (db *DB) BindTempAuthKey(ctx context.Context, tempKeyID, permKeyID [8]byte,
 	if err != nil {
 		return gerrors.Wrap(err, "build query")
 	}
+
 	if _, err := db.pool.Exec(ctx, sql, args...); err != nil {
 		return gerrors.Wrap(err, "exec")
 	}
+
 	return nil
 }
 
@@ -78,6 +88,7 @@ func (db *DB) BindTempAuthKey(ctx context.Context, tempKeyID, permKeyID [8]byte,
 func (db *DB) PermAuthKey(ctx context.Context, tempKeyID [8]byte) (permKeyID [8]byte, ok bool, err error) {
 	q := psql.Select("perm_key_id").From("temp_auth_keys").
 		Where("temp_key_id = ? AND expires_at > now()", tempKeyID[:])
+
 	sql, args, err := q.ToSql()
 	if err != nil {
 		return [8]byte{}, false, gerrors.Wrap(err, "build query")
@@ -88,8 +99,11 @@ func (db *DB) PermAuthKey(ctx context.Context, tempKeyID [8]byte) (permKeyID [8]
 		if errors.Is(err, pgx.ErrNoRows) {
 			return [8]byte{}, false, nil
 		}
+
 		return [8]byte{}, false, gerrors.Wrap(err, "scan")
 	}
+
 	copy(permKeyID[:], value)
+
 	return permKeyID, true, nil
 }

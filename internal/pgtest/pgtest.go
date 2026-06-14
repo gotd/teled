@@ -23,6 +23,7 @@ func New(t testing.TB) string {
 	}
 
 	ctx := context.Background()
+
 	const (
 		dbName     = "test_db"
 		dbUser     = "test_user"

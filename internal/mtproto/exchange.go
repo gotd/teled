@@ -29,12 +29,16 @@ func (e exchangeConn) Recv(ctx context.Context, b *bin.Buffer) error {
 		if err := b.PeekN(authKeyID[:], len(authKeyID)); err != nil {
 			return errors.Wrap(err, "peek auth key id")
 		}
+
 		if authKeyID != ([8]byte{}) {
 			var buf bin.Buffer
+
 			buf.PutInt32(-codec.CodeAuthKeyNotFound)
+
 			if err := e.Send(ctx, &buf); err != nil {
 				return errors.Wrap(err, "send")
 			}
+
 			continue
 		}
 

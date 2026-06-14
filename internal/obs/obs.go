@@ -23,6 +23,7 @@ func (p Providers) Tracer(name string) trace.Tracer {
 	if tp == nil {
 		tp = tracenoop.NewTracerProvider()
 	}
+
 	return tp.Tracer(name)
 }
 
@@ -32,6 +33,7 @@ func (p Providers) Meter(name string) metric.Meter {
 	if mp == nil {
 		mp = metricnoop.NewMeterProvider()
 	}
+
 	return mp.Meter(name)
 }
 
@@ -42,5 +44,6 @@ func Must[T any](v T, err error) T {
 	if err != nil {
 		panic(err)
 	}
+
 	return v
 }

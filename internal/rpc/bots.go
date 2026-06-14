@@ -18,9 +18,11 @@ func (h *Handler) requireBot(ctx context.Context) (teled.User, error) {
 	if err != nil {
 		return teled.User{}, err
 	}
+
 	if !caller.IsBot {
 		return teled.User{}, tgerr.New(400, "USER_BOT_REQUIRED")
 	}
+
 	return caller, nil
 }
 
@@ -31,11 +33,13 @@ func scopeKey(scope tg.BotCommandScopeClass) string {
 	if scope == nil {
 		scope = &tg.BotCommandScopeDefault{}
 	}
+
 	var b bin.Buffer
 	if err := scope.Encode(&b); err != nil {
 		// Encoding a scope cannot realistically fail; fall back to the type id.
 		return scope.TypeName()
 	}
+
 	return hex.EncodeToString(b.Buf)
 }
 
@@ -54,6 +58,7 @@ func (h *Handler) botsSetBotCommands(ctx context.Context, req *tg.BotsSetBotComm
 	if err := h.db.SetBotCommands(ctx, bot.ID, scopeKey(req.Scope), req.LangCode, commands); err != nil {
 		return false, h.internal(ctx, "set bot commands", err)
 	}
+
 	return true, nil
 }
 
@@ -73,6 +78,7 @@ func (h *Handler) botsGetBotCommands(ctx context.Context, req *tg.BotsGetBotComm
 	for i, c := range commands {
 		out[i] = tg.BotCommand{Command: c.Command, Description: c.Description}
 	}
+
 	return out, nil
 }
 
@@ -86,5 +92,6 @@ func (h *Handler) botsResetBotCommands(ctx context.Context, req *tg.BotsResetBot
 	if err := h.db.ResetBotCommands(ctx, bot.ID, scopeKey(req.Scope), req.LangCode); err != nil {
 		return false, h.internal(ctx, "reset bot commands", err)
 	}
+
 	return true, nil
 }
