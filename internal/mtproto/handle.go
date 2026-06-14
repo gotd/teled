@@ -23,6 +23,7 @@ import (
 // MTProto protocol, so each encrypted message starts a new trace.
 func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer) (rerr error) {
 	ctx, span := s.obs.tracer.Start(ctx, "mtproto.handle", trace.WithSpanKind(trace.SpanKindServer))
+
 	defer func() {
 		if rerr != nil {
 			span.RecordError(rerr)
@@ -31,6 +32,7 @@ func (s *Server) rpcHandle(ctx context.Context, c transport.Conn, b *bin.Buffer)
 
 		span.End()
 	}()
+
 	s.obs.messages.Add(ctx, 1)
 
 	m := &crypto.EncryptedMessage{}

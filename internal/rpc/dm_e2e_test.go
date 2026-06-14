@@ -137,6 +137,7 @@ func TestDMSendAndHistory(t *testing.T) {
 		userA = signUp(ctx, t, api, "+1111111111", "Alice")
 
 		const randomID = 0x5151
+
 		updResp, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
 			Peer: inputPeer(userB), Message: "hello bob", RandomID: randomID,
 		})
@@ -236,6 +237,7 @@ func TestMediaRoundTrip(t *testing.T) {
 		_ = signUp(ctx, t, api, "+14000000002", "Alice")
 
 		const fileID = 0xBEEF
+
 		ok, err := api.UploadSaveFilePart(ctx, &tg.UploadSaveFilePartRequest{FileID: fileID, FilePart: 0, Bytes: data})
 		require.NoError(t, err)
 		require.True(t, ok)

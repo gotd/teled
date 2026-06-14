@@ -21,6 +21,7 @@ func TestKeyStore(t *testing.T) {
 	ctx := context.Background()
 
 	var raw crypto.Key
+
 	_, err := rand.Read(raw[:])
 	require.NoError(t, err)
 

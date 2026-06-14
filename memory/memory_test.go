@@ -83,6 +83,7 @@ func TestDBUsersAndSessions(t *testing.T) {
 	require.False(t, ok)
 
 	var key [8]byte
+
 	key[0] = 7
 	require.NoError(t, d.BindSession(ctx, key, u.ID))
 	id, ok, err := d.SessionUserID(ctx, key)
@@ -256,6 +257,7 @@ func TestDBDifference(t *testing.T) {
 	}
 
 	require.Equal(t, []string{teled.UpdateNew, teled.UpdateReadInbox, teled.UpdateEdit}, types)
+
 	peer, maxID := teled.DecodeRead(entries[1].Extra)
 	require.Equal(t, alice.ID, peer)
 	require.Equal(t, int64(1), maxID)

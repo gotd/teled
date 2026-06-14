@@ -39,11 +39,13 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 				// go-faster/sdk hands us a *zap.Logger; adapt it to the gotd/log
 				// port used throughout teled.
 				a.lg = logzap.New(lg)
+
 				return a.serve(ctx, obs.Providers{
 					TracerProvider: t.TracerProvider(),
 					MeterProvider:  t.MeterProvider(),
 				})
 			})
+
 			return nil
 		},
 	}

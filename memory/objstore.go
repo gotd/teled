@@ -41,6 +41,7 @@ func (s *ObjectStore) Put(_ context.Context, key string, r io.Reader, _ int64, _
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.objs[key] = data
 
 	return nil
@@ -99,6 +100,7 @@ func (s *ObjectStore) Stat(_ context.Context, key string) (teled.ObjectInfo, err
 func (s *ObjectStore) Delete(_ context.Context, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	delete(s.objs, key)
 
 	return nil

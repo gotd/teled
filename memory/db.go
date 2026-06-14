@@ -127,6 +127,7 @@ func (d *DB) Ready(context.Context) error { return nil }
 // genAccessHash returns a random non-zero access hash, like the SQL backend.
 func genAccessHash() int64 {
 	var b [8]byte
+
 	_, _ = rand.Read(b[:])
 
 	h := int64(binary.LittleEndian.Uint64(b[:])) // #nosec G115 -- bit reinterpretation.
@@ -394,6 +395,7 @@ func phoneCodeKey(phone, codeHash string) string { return phone + "\x00" + codeH
 func (d *DB) SavePhoneCode(_ context.Context, phone, codeHash, code string, ttl time.Duration) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	d.phoneCodes[phoneCodeKey(phone, codeHash)] = memPhoneCode{code: code, expiresAt: time.Now().Add(ttl)}
 
 	return nil
@@ -418,6 +420,7 @@ func (d *DB) PhoneCode(_ context.Context, phone, codeHash string) (code string, 
 func (d *DB) BindSession(_ context.Context, keyID [8]byte, userID int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	d.sessions[keyID] = userID
 
 	return nil
@@ -427,6 +430,7 @@ func (d *DB) BindSession(_ context.Context, keyID [8]byte, userID int64) error {
 func (d *DB) SessionUserID(_ context.Context, keyID [8]byte) (userID int64, ok bool, err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	userID, ok = d.sessions[keyID]
 
 	return userID, ok, nil
@@ -436,6 +440,7 @@ func (d *DB) SessionUserID(_ context.Context, keyID [8]byte) (userID int64, ok b
 func (d *DB) Unbind(_ context.Context, keyID [8]byte) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	delete(d.sessions, keyID)
 
 	return nil
@@ -444,6 +449,7 @@ func (d *DB) Unbind(_ context.Context, keyID [8]byte) error {
 func (d *DB) BindTempAuthKey(_ context.Context, tempKeyID, permKeyID [8]byte, expiresAt time.Time) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	d.tempKeys[tempKeyID] = memTempKey{perm: permKeyID, expiresAt: expiresAt}
 
 	return nil
@@ -521,6 +527,7 @@ func (d *DB) SendMessage(_ context.Context, fromID, peerID int64, text string, r
 	defer d.mu.Unlock()
 
 	var sent teled.SentMessage
+
 	sent.SelfChat = fromID == peerID
 
 	d.msgSeq++
@@ -872,6 +879,7 @@ func (d *DB) BotFatherState(_ context.Context, userID int64) (teled.BotFatherSta
 func (d *DB) SetBotFatherState(_ context.Context, userID int64, s teled.BotFatherState) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	d.botStates[userID] = s
 
 	return nil
@@ -881,6 +889,7 @@ func (d *DB) SetBotFatherState(_ context.Context, userID int64, s teled.BotFathe
 func (d *DB) ClearBotFatherState(_ context.Context, userID int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	delete(d.botStates, userID)
 
 	return nil
@@ -926,6 +935,7 @@ func (d *DB) BotCommands(_ context.Context, botUserID int64, scope, langCode str
 func (d *DB) ResetBotCommands(_ context.Context, botUserID int64, scope, langCode string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
 	delete(d.botCommands, botCommandsKey(botUserID, scope, langCode))
 
 	return nil

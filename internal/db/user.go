@@ -40,6 +40,7 @@ func scanUser(row pgx.Row, u *teled.User) error {
 // genAccessHash returns a random non-zero access hash.
 func genAccessHash() int64 {
 	var b [8]byte
+
 	_, _ = rand.Read(b[:])
 
 	h := int64(binary.LittleEndian.Uint64(b[:])) // #nosec G115 -- bit reinterpretation.

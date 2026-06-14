@@ -58,8 +58,8 @@ func newKeys(_ *application) *cobra.Command {
 		Short: "Generate new RSA private key",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Generate RSA key.
-
 			const bitSize = 2048
+
 			key, err := rsa.GenerateKey(rand.Reader, bitSize)
 			if err != nil {
 				return nil

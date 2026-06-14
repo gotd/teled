@@ -111,6 +111,7 @@ func TestSessionSurvivesRestart(t *testing.T) {
 	// be authorized — getUsers(self) resolves the original account.
 	addr2, key2, stop2 := boot()
 	defer stop2()
+
 	runClient(addr2, key2, storage, func(api *tg.Client) {
 		users, err := api.UsersGetUsers(ctx, []tg.InputUserClass{&tg.InputUserSelf{}})
 		require.NoError(t, err)

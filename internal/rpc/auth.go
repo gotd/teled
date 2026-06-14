@@ -182,6 +182,7 @@ func (h *Handler) authSignIn(ctx context.Context, req *tg.AuthSignInRequest) (tg
 	if !ok {
 		log.For(h.lg).Debug(ctx, "auth.signIn: no account, signup required",
 			log.String("phone", phone))
+
 		return &tg.AuthAuthorizationSignUpRequired{}, nil
 	}
 

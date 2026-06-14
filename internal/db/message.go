@@ -61,6 +61,7 @@ func (db *DB) SendMessage(ctx context.Context, fromID, peerID int64, text string
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var sent teled.SentMessage
+
 	sent.SelfChat = fromID == peerID
 
 	var media *int64

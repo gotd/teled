@@ -19,7 +19,7 @@ linters:
     - unconvert
     - unused
     - whitespace
-    - wsl
+    - wsl_v5
 
   # Do not enable:
   # - godox     (todos are OK)

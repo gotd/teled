@@ -112,6 +112,7 @@ func New(tb testing.TB) *Server {
 
 		serveErr = srv.Serve(ctx, ln)
 	}()
+
 	tb.Cleanup(func() {
 		cancel()
 		<-done
