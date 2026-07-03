@@ -14,8 +14,8 @@ require (
 	github.com/gotd/td v0.159.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
-	github.com/riverqueue/river v0.39.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.39.0
+	github.com/riverqueue/river v0.40.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
@@ -100,9 +100,9 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
-	github.com/riverqueue/river/riverdriver v0.39.0 // indirect
-	github.com/riverqueue/river/rivershared v0.39.0 // indirect
-	github.com/riverqueue/river/rivertype v0.39.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.40.0 // indirect
+	github.com/riverqueue/river/rivershared v0.40.0 // indirect
+	github.com/riverqueue/river/rivertype v0.40.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
 	github.com/samber/slog-common v0.21.0 // indirect
 	github.com/samber/slog-zap/v2 v2.7.0 // indirect
