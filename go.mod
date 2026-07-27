@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/coder/websocket v1.8.15
-	github.com/go-faster/errors v0.7.1
+	github.com/go-faster/errors v0.8.0
 	github.com/go-faster/jx v1.2.0
 	github.com/go-faster/sdk v0.37.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
