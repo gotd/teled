@@ -12,6 +12,8 @@ import (
 //	tg.InvokeWithLayerRequest
 //	tg.InitConnectionRequest
 //	tg.InvokeWithoutUpdatesRequest
+//	tg.InvokeAfterMsgRequest
+//	tg.InvokeAfterMsgsRequest
 //
 // so the inner query reaches the next handler.
 func UnpackInvoke(next Handler) Handler {
@@ -34,6 +36,12 @@ func UnpackInvoke(next Handler) Handler {
 				r = &tg.InitConnectionRequest{Query: &obj}
 			case tg.InvokeWithoutUpdatesRequestTypeID:
 				r = &tg.InvokeWithoutUpdatesRequest{Query: &obj}
+			// A connection's messages are handled one at a time, in order, so
+			// the messages these depend on are already done: just unwrap.
+			case tg.InvokeAfterMsgRequestTypeID:
+				r = &tg.InvokeAfterMsgRequest{Query: &obj}
+			case tg.InvokeAfterMsgsRequestTypeID:
+				r = &tg.InvokeAfterMsgsRequest{Query: &obj}
 			default:
 				return next.OnMessage(srv, req)
 			}
