@@ -25,6 +25,7 @@ import (
 	"github.com/gotd/teled/internal/mtproto"
 	"github.com/gotd/teled/internal/obs"
 	"github.com/gotd/teled/internal/rpc"
+	"github.com/gotd/teled/memory"
 )
 
 // Migrate applies teled's schema migrations to the PostgreSQL database at dsn.
@@ -43,8 +44,8 @@ type Options struct {
 	// Logger receives server logs. Defaults to a no-op logger.
 	Logger log.Logger
 	// DB overrides the storage backend. When nil, New builds the PostgreSQL
-	// backend from pool (or runs with no persistence when pool is also nil).
-	// Set it to plug in an alternative, e.g. github.com/gotd/teled/memory.
+	// backend from pool, or an in-memory one (github.com/gotd/teled/memory)
+	// when pool is also nil.
 	DB teled.DB
 	// Obfuscated wraps the listener in MTProto's obfuscated transport, as the
 	// production server does. Leave false to auto-detect the transport codec,
@@ -64,8 +65,8 @@ type Server struct {
 }
 
 // New assembles a server from a private key and storage. pool is a PostgreSQL
-// pool already migrated with Migrate; pass nil to run with in-memory auth keys
-// and no persistence (most RPCs then return NOT_IMPLEMENTED). store backs media
+// pool already migrated with Migrate; pass nil to keep auth keys and all state
+// in memory, lost when the process exits. store backs media
 // upload/download and may be nil when media is unused.
 func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts Options) *Server {
 	if opts.DC == 0 {
@@ -89,6 +90,12 @@ func New(key *rsa.PrivateKey, pool *pgxpool.Pool, store teled.ObjectStore, opts 
 
 		keys = db.NewKeyStore(pool)
 	} else {
+		if database == nil {
+			// Without storage most RPCs would fail with NOT_IMPLEMENTED, and
+			// clients retry those in a loop: run fully in memory instead.
+			database = memory.NewDB()
+		}
+
 		keys = mtproto.NewInMemoryKeys()
 	}
 

@@ -56,7 +56,7 @@ Based on https://gotd.dev Telegram protocol implementation.`,
 		f.IntVar(&a.Port, "port", 10443, "Port of the server")
 		f.StringVar(&a.PrivateKeyPath, "key", "", "Path to PEM-encoded private key")
 		f.StringVar(&a.PostgresURI, "postgres-uri", os.Getenv("DATABASE_URL"),
-			"PostgreSQL DSN (postgres://...); if empty, auth keys are kept in memory")
+			"PostgreSQL DSN (postgres://...); if empty, all state is kept in memory")
 		f.StringVar(&a.ObjectStoreDir, "object-store-dir", "./objects",
 			"Local filesystem directory for media object storage")
 

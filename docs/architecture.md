@@ -313,7 +313,8 @@ groups/channels arrive, broadcast fan-out becomes a River job.
 
 Extends the existing `internal/cmd` cobra/pflag setup:
 
-- `--postgres-uri` (or `DATABASE_URL`) — pgx pool DSN.
+- `--postgres-uri` (or `DATABASE_URL`) — pgx pool DSN. Without it teled keeps all
+  state in memory (`memory` package) and loses it on restart.
 - `--object-store-dir` — local FS base dir.
 - `--host` / `--port` / `--private-key` — existing transport flags.
 - Telemetry via `go-faster/sdk` env conventions (OTLP endpoint, etc.).
