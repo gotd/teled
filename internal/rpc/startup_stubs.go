@@ -137,6 +137,10 @@ func (h *Handler) messagesGetWebPagePreview(context.Context, *tg.MessagesGetWebP
 	return &tg.MessagesWebPagePreview{Media: &tg.MessageMediaEmpty{}}, nil
 }
 
+func (h *Handler) contactsGetSponsoredPeers(context.Context, string) (tg.ContactsSponsoredPeersClass, error) {
+	return &tg.ContactsSponsoredPeersEmpty{}, nil
+}
+
 func (h *Handler) contactsGetTopPeers(context.Context, *tg.ContactsGetTopPeersRequest) (tg.ContactsTopPeersClass, error) {
 	return &tg.ContactsTopPeersNotModified{}, nil
 }

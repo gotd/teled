@@ -40,6 +40,7 @@ func TestStartupStubsEncode(t *testing.T) {
 		func() (bin.Encoder, error) { return h.messagesGetScheduledHistory(ctx, nil) },
 		func() (bin.Encoder, error) { return h.messagesGetWebPage(ctx, nil) },
 		func() (bin.Encoder, error) { return h.contactsGetTopPeers(ctx, nil) },
+		func() (bin.Encoder, error) { return h.contactsGetSponsoredPeers(ctx, "") },
 		func() (bin.Encoder, error) { return h.accountGetPassword(ctx) },
 		func() (bin.Encoder, error) { return h.accountGetContentSettings(ctx) },
 	}
