@@ -111,6 +111,63 @@ func TestMessagesSearch(t *testing.T) {
 	})
 }
 
+// TestMessagesSearchGlobal verifies text search across all of the caller's
+// dialogs, with offset_id paging.
+func TestMessagesSearchGlobal(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	g := tdsync.NewCancellableGroup(ctx)
+	env := newTestEnv(t, ctx, g)
+
+	var bob *tg.User
+
+	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+		bob = signUp(ctx, t, api, "+15551113001", "Bob")
+	})
+
+	env.runClient(ctx, t, &session.StorageMemory{}, func(api *tg.Client) {
+		_ = signUp(ctx, t, api, "+15551113002", "Alice")
+
+		send := func(peer tg.InputPeerClass, text string, randomID int64) {
+			_, err := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+				Peer: peer, Message: text, RandomID: randomID,
+			})
+			require.NoError(t, err)
+		}
+		send(&tg.InputPeerSelf{}, "note: hello self", 1)
+		send(inputPeer(bob), "hello bob", 2)
+		send(inputPeer(bob), "unrelated", 3)
+
+		search := func(offsetID, limit int) tg.MessagesMessagesClass {
+			res, err := api.MessagesSearchGlobal(ctx, &tg.MessagesSearchGlobalRequest{
+				Q: "HELLO", Filter: &tg.InputMessagesFilterEmpty{},
+				OffsetPeer: &tg.InputPeerEmpty{}, OffsetID: offsetID, Limit: limit,
+			})
+			require.NoError(t, err)
+
+			return res
+		}
+
+		all, ok := search(0, 10).(*tg.MessagesMessages)
+		require.True(t, ok)
+		require.Len(t, all.Messages, 2, "both dialogs match")
+		require.Equal(t, "hello bob", all.Messages[0].(*tg.Message).Message, "newest first")
+		require.Equal(t, "note: hello self", all.Messages[1].(*tg.Message).Message)
+		require.Len(t, all.Users, 2, "self and bob")
+
+		first, ok := search(0, 1).(*tg.MessagesMessagesSlice)
+		require.True(t, ok)
+		require.Equal(t, 2, first.Count)
+		require.Len(t, first.Messages, 1)
+
+		next := search(first.Messages[0].(*tg.Message).ID, 1)
+		msgs, _ := next.AsModified()
+		require.Len(t, msgs.GetMessages(), 1)
+		require.Equal(t, "note: hello self", msgs.GetMessages()[0].(*tg.Message).Message)
+	})
+}
+
 // TestDrafts verifies saveDraft persists, getAllDrafts returns it, getDialogs
 // carries it, and a blank draft clears it.
 func TestDrafts(t *testing.T) {

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"sort"
 
 	"github.com/gotd/log"
 	"github.com/gotd/td/proto"
@@ -198,6 +199,87 @@ func (h *Handler) messagesSearch(ctx context.Context, req *tg.MessagesSearchRequ
 		Messages: out,
 		Users:    []tg.UserClass{h.tgUser(caller, true), h.tgUser(peer, false)},
 	}, nil
+}
+
+// messagesSearchGlobal searches message text across the caller's dialogs,
+// newest first. Results are paged by offset_id: only messages older than it are
+// returned. Only DMs exist, so offset_rate and offset_peer are not needed.
+func (h *Handler) messagesSearchGlobal(
+	ctx context.Context, req *tg.MessagesSearchGlobalRequest,
+) (tg.MessagesMessagesClass, error) {
+	caller, err := h.requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := req.Limit
+	if limit <= 0 || limit > historyMaxLimit {
+		limit = historyDefaultLimit
+	}
+
+	dialogs, err := h.db.GetDialogs(ctx, caller.ID, dialogsDefaultLimit)
+	if err != nil {
+		return nil, h.internal(ctx, "search dialogs", err)
+	}
+
+	var (
+		found []teled.Message
+		count int // all matches, ignoring offset_id
+		users = []tg.UserClass{h.tgUser(caller, true)}
+	)
+
+	for _, dl := range dialogs {
+		// Only the newest historyMaxLimit matches per dialog are reachable.
+		msgs, err := h.db.SearchMessages(ctx, caller.ID, dl.PeerUserID, req.Q, historyMaxLimit)
+		if err != nil {
+			return nil, h.internal(ctx, "search messages", err)
+		}
+
+		count += len(msgs)
+		matched := false
+
+		for _, m := range msgs {
+			if req.OffsetID > 0 && m.LocalID >= int64(req.OffsetID) {
+				continue
+			}
+
+			found = append(found, m)
+			matched = true
+		}
+
+		if !matched || dl.PeerUserID == caller.ID {
+			continue
+		}
+
+		peer, ok, err := h.db.UserByID(ctx, dl.PeerUserID)
+		if err != nil {
+			return nil, h.internal(ctx, "search peer", err)
+		}
+
+		if ok {
+			users = append(users, h.tgUser(*peer, false))
+		}
+	}
+
+	// Local ids are per account and grow over time, so they order by recency.
+	sort.Slice(found, func(i, j int) bool { return found[i].LocalID > found[j].LocalID })
+
+	more := len(found) > limit
+	if more {
+		found = found[:limit]
+	}
+
+	out := make([]tg.MessageClass, 0, len(found))
+	for i := range found {
+		out = append(out, dmMessage(found[i]))
+	}
+
+	if more || req.OffsetID > 0 {
+		// A slice carries the total and lets the client page with offset_id.
+		return &tg.MessagesMessagesSlice{Count: count, Messages: out, Users: users}, nil
+	}
+
+	return &tg.MessagesMessages{Messages: out, Users: users}, nil
 }
 
 // contactsResolveUsername resolves a username to a user peer.

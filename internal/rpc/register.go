@@ -115,6 +115,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetSuggestedDialogFilters(h.messagesGetSuggestedDialogFilters)
 	d.OnMessagesGetPeerSettings(h.messagesGetPeerSettings)
 	d.OnMessagesSearch(h.messagesSearch)
+	d.OnMessagesSearchGlobal(h.messagesSearchGlobal)
 	d.OnMessagesGetScheduledHistory(h.messagesGetScheduledHistory)
 	d.OnMessagesGetWebPage(h.messagesGetWebPage)
 	d.OnMessagesGetWebPagePreview(h.messagesGetWebPagePreview)
