@@ -121,6 +121,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetWebPagePreview(h.messagesGetWebPagePreview)
 	d.OnContactsGetTopPeers(h.contactsGetTopPeers)
 	d.OnContactsGetSponsoredPeers(h.contactsGetSponsoredPeers)
+	d.OnMessagesGetSponsoredMessages(h.messagesGetSponsoredMessages)
 	d.OnAccountGetPassword(h.accountGetPassword)
 	d.OnAccountGetContentSettings(h.accountGetContentSettings)
 	d.OnAccountGetContactSignUpNotification(h.accountGetContactSignUpNotification)

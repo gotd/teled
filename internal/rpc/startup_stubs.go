@@ -141,6 +141,12 @@ func (h *Handler) contactsGetSponsoredPeers(context.Context, string) (tg.Contact
 	return &tg.ContactsSponsoredPeersEmpty{}, nil
 }
 
+func (h *Handler) messagesGetSponsoredMessages(
+	context.Context, *tg.MessagesGetSponsoredMessagesRequest,
+) (tg.MessagesSponsoredMessagesClass, error) {
+	return &tg.MessagesSponsoredMessagesEmpty{}, nil
+}
+
 func (h *Handler) contactsGetTopPeers(context.Context, *tg.ContactsGetTopPeersRequest) (tg.ContactsTopPeersClass, error) {
 	return &tg.ContactsTopPeersNotModified{}, nil
 }
