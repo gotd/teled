@@ -16,10 +16,10 @@ import (
 
 // setupStorage initializes persistence and returns the PostgreSQL pool plus a
 // cleanup function. With no --postgres-uri it returns a nil pool so the server
-// runs standalone with in-memory auth keys (lost on restart).
+// runs standalone with all state in memory (lost on restart).
 func (a *application) setupStorage(ctx context.Context, providers obs.Providers) (*pgxpool.Pool, func(), error) {
 	if a.PostgresURI == "" {
-		log.For(a.lg).Warn(ctx, "No --postgres-uri set; auth keys are kept in memory and lost on restart")
+		log.For(a.lg).Warn(ctx, "No --postgres-uri set; all state is kept in memory and lost on restart")
 		return nil, func() {}, nil
 	}
 

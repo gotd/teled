@@ -44,14 +44,13 @@ func TestInMemoryServer(t *testing.T) {
 
 	addr := ln.Addr().(*net.TCPAddr)
 
-	// pool is nil: the server uses in-memory auth keys, the injected in-memory
-	// DB, and the in-memory object store.
+	// pool and DB are nil: the server defaults to in-memory auth keys and DB,
+	// as the teled binary does without --postgres-uri.
 	srv := server.New(rsaKey, nil, memory.NewObjectStore(), server.Options{
 		DC:     dc,
 		Host:   addr.IP.String(),
 		Port:   addr.Port,
 		Logger: lg,
-		DB:     memory.NewDB(),
 	})
 
 	g.Go(func(ctx context.Context) error { return srv.Serve(ctx, ln) })

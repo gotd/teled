@@ -75,6 +75,7 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetRecentStickers(h.messagesGetRecentStickers)
 	d.OnMessagesGetSavedGifs(h.messagesGetSavedGifs)
 	d.OnMessagesGetPeerDialogs(h.messagesGetPeerDialogs)
+	d.OnMessagesSetTyping(h.messagesSetTyping)
 
 	// Updates (stubs until M4).
 	d.OnUpdatesGetState(h.updatesGetState)
@@ -115,10 +116,13 @@ func (h *Handler) register(d *tg.ServerDispatcher) {
 	d.OnMessagesGetSuggestedDialogFilters(h.messagesGetSuggestedDialogFilters)
 	d.OnMessagesGetPeerSettings(h.messagesGetPeerSettings)
 	d.OnMessagesSearch(h.messagesSearch)
+	d.OnMessagesSearchGlobal(h.messagesSearchGlobal)
 	d.OnMessagesGetScheduledHistory(h.messagesGetScheduledHistory)
 	d.OnMessagesGetWebPage(h.messagesGetWebPage)
 	d.OnMessagesGetWebPagePreview(h.messagesGetWebPagePreview)
 	d.OnContactsGetTopPeers(h.contactsGetTopPeers)
+	d.OnContactsGetSponsoredPeers(h.contactsGetSponsoredPeers)
+	d.OnMessagesGetSponsoredMessages(h.messagesGetSponsoredMessages)
 	d.OnAccountGetPassword(h.accountGetPassword)
 	d.OnAccountGetContentSettings(h.accountGetContentSettings)
 	d.OnAccountGetContactSignUpNotification(h.accountGetContactSignUpNotification)
